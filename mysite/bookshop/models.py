@@ -5,14 +5,14 @@ from django.db import models
 
 
 COMPANIES_CHOIСES = [
-    ('self-publishing', 'Самиздат'),
-    ('publishing house', 'Издательство'),
+    ("self-publishing", "Самиздат"),
+    ("publishing house", "Издательство"),
 ]
 
 
 class Companies(models.Model):
-    name = models.CharField(verbose_name='Название', max_length=40, blank=False)
-    status = models.CharField(verbose_name='Статус', choices=COMPANIES_CHOIСES, blank=False)
+    name = models.CharField(verbose_name="Название", max_length=40, blank=False)
+    status = models.CharField(verbose_name="Статус", choices=COMPANIES_CHOIСES, blank=False)
 
     class Meta:
         verbose_name = "Компания"
@@ -82,3 +82,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} {self.name}"
+
+
+class Support_Messages(models.Model):
+    user = models.ForeignKey(
+        User, verbose_name="Отправитель", related_name="messages", blank=False, on_delete=models.CASCADE
+    )
+    parent_message = models.ForeignKey(
+        "self", verbose_name="Ответ на", related_name="response", blank=True, null=True, on_delete=models.CASCADE
+    )
+    text = models.TextField(verbose_name="Текст сообщения", blank=False)
+    date_time = models.DateTimeField(verbose_name="Дата отправки", auto_now=True)
+
+    class Meta:
+        verbose_name = "Сообщение"
+        verbose_name_plural = "Сообщения"
+
+    def __str__(self):
+        return f"Сообщение {self.user} {self.id}"
