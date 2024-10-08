@@ -86,7 +86,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Support_Messages(models.Model):
     user = models.ForeignKey(
-        User, verbose_name="Отправитель", related_name="messages", blank=False, on_delete=models.CASCADE
+        User, verbose_name="Отправитель", related_name="messages", blank=False, null=False, on_delete=models.CASCADE
     )
     parent_message = models.ForeignKey(
         "self", verbose_name="Ответ на", related_name="response", blank=True, null=True, on_delete=models.CASCADE
@@ -99,4 +99,11 @@ class Support_Messages(models.Model):
         verbose_name_plural = "Сообщения"
 
     def __str__(self):
-        return f"Сообщение {self.user} {self.id}"
+        return f"Сообщение {self.user} id:{self.id}"
+
+
+class Books(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=False)
+    file = models.trip_number = models.URLField(
+        verbose_name="Ссылка на файл с книгой", max_length=128,  unique=True, blank=True
+    )
