@@ -103,7 +103,7 @@ class Support_Messages(models.Model):
 
 
 class Books(models.Model):
-    name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=False)
-    file = models.trip_number = models.URLField(
-        verbose_name="Ссылка на файл с книгой", max_length=128,  unique=True, blank=True
+    name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=True)
+    file = models.TextField(
+        verbose_name="Ссылка на файл с книгой"
     )

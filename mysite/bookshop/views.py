@@ -1,56 +1,49 @@
+import ast
+import codecs
 import os
+import tempfile
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 from .models import Books
-from .forms import BookForm
+
 
 from pydrive.auth import GoogleAuth
 
 from .script import create_and_upload_file
 import json
-
-gauth = GoogleAuth()
+from wsgiref.util import FileWrapper
+import base64
 
 
 @csrf_exempt
 @api_view(['POST'])
 def upload_file(request):
-    if request.method == "POST":
-        form = BookForm(request.POST, request.FILES)
-        print(request.FILES)
-        if form.is_valid():
-            data = request.FILES['file']
-            json_data = request.POST
+    if request.method == 'POST':
+        file = request.FILES['file']
+        file_str = file.read()
+        file_model = Books.objects.create(file=file_str)
+        return HttpResponse('File saved to database')
 
-            book = Books(name=json_data["name"])
-            book.save()
+    return HttpResponse('Invalid request method')
 
-            file_name = f"{book.pk}.pdf"
-            default_storage.save(file_name, ContentFile(data.read()))
-            link = create_and_upload_file(file_name)
-            default_storage.delete(file_name)
 
-            book.file = link
-
-            book.save()
-
-            return HttpResponse("/success/url/")
+@csrf_exempt
+@api_view(['GET'])
+def download_file(request, id):
+    file_model = Books.objects.filter(pk=id).first()
+    print(file_model.pk)
+    if file_model:
+        file_data = file_model.file
+        response = HttpResponse(
+            ast.literal_eval(file_data),
+            content_type="application/pdf")
+        response['Content-Disposition'] = 'attachment; filename="file.pdf"'
+        return response
     else:
-        form = BookForm()
-    return HttpResponse("/unnnsuccess/url/")
-
-
-@api_view(['GET'])
-def download_file(request, book_id):
-    uploaded_file = Books.objects.get(pk=book_id)
-    return HttpResponse(json.dumps({"link": f"{uploaded_file.file}"}), content_type='application/json')
-
-
-@api_view(['GET'])
-def download_cover(request, book_id):
-    uploaded_cover = Books.objects.get(pk=book_id)
-    return HttpResponse(uploaded_cover.cover, content_type='application/jpg')
+        return HttpResponse('No file found in database')
