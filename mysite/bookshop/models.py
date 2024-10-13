@@ -1,12 +1,30 @@
+from decimal import Decimal
+
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.contrib.auth.models import AbstractUser, UserManager, PermissionsMixin
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
 COMPANIES_CHOIСES = [
     ("self-publishing", "Самиздат"),
     ("publishing house", "Издательство"),
+]
+
+BOOK_STATUS_CHOICES = [
+    ("released", "Выпущена"),
+    ("blocked", "Заблокирована"),
+    ("coming soon", "Анонс"),
+    ("request", "Заявка")
+]
+
+AGE_CHOIСES = [
+    ("zero", "0+"),
+    ("six", "6+"),
+    ("twelve", "12+"),
+    ("sixteen", "16+"),
+    ("eighteen", "18+")
 ]
 
 
@@ -86,10 +104,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Support_Messages(models.Model):
     user = models.ForeignKey(
-        User, verbose_name="Отправитель", related_name="messages", blank=False, null=False, on_delete=models.CASCADE
+        User,
+        verbose_name="Отправитель",
+        related_name="messages",
+        blank=False,
+        null=False,
+        on_delete=models.CASCADE
     )
     parent_message = models.ForeignKey(
-        "self", verbose_name="Ответ на", related_name="response", blank=True, null=True, on_delete=models.CASCADE
+        "self",
+        verbose_name="Ответ на",
+        related_name="response",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
     )
     text = models.TextField(verbose_name="Текст сообщения", blank=False)
     date_time = models.DateTimeField(verbose_name="Дата отправки", auto_now=True)
@@ -104,6 +132,46 @@ class Support_Messages(models.Model):
 
 class Books(models.Model):
     name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=True)
+    company = models.ForeignKey(
+        Companies,
+        verbose_name="Издательство",
+        related_name="books",
+        blank=False,
+        null=True,
+        on_delete=models.CASCADE
+    )
     file = models.TextField(
-        verbose_name="Ссылка на файл с книгой"
+        verbose_name="Файл с книгой",
+        null=True
+    )
+    cover = models.TextField(
+        verbose_name="Файл с обложкой",
+        null=True
+    )
+    publication_date = models.DateField(verbose_name="Дата публикации", blank=False, null=True)
+    content = models.TextField(verbose_name="Содержание", blank=False, null=True)
+    price = models.DecimalField(
+        verbose_name="Цена",
+        decimal_places=0,
+        max_digits=12,
+        validators=[MinValueValidator(Decimal('1'))],
+        blank=False,
+        null=True
+    )
+    status = models.CharField(verbose_name="Статус", choices=BOOK_STATUS_CHOICES, blank=False, default="request")
+    age_limit = models.CharField(verbose_name="Возрастное ограничение", choices=AGE_CHOIСES, blank=False, default="zero")
+    isbn = models.CharField(verbose_name="ISBN", blank=False, null=True)
+    bbk = models.CharField(verbose_name="ББК", blank=False, null=True)
+    udk = models.CharField(verbose_name="УДК", blank=False, null=True)
+    author_mark = models.CharField(verbose_name="Авторский знак", blank=False, null=True)
+    language = models.CharField(verbose_name="Язык", blank=False, null=True)
+    priority = models.DecimalField(
+        verbose_name="Приоритет отображения",
+        decimal_places=0,
+        max_digits=2, validators=[
+            MinValueValidator(Decimal('1')),
+            MaxValueValidator(Decimal('10'))
+        ],
+        blank=False,
+        null=True
     )
