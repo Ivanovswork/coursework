@@ -1,13 +1,13 @@
 from decimal import Decimal
 
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
-from django.contrib.auth.models import AbstractUser, UserManager, PermissionsMixin
+from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
-COMPANIES_CHOIСES = [
+COMPANIES_CHOICES = [
     ("self-publishing", "Самиздат"),
     ("publishing house", "Издательство"),
 ]
@@ -19,7 +19,7 @@ BOOK_STATUS_CHOICES = [
     ("request", "Заявка")
 ]
 
-AGE_CHOIСES = [
+AGE_CHOICES = [
     ("zero", "0+"),
     ("six", "6+"),
     ("twelve", "12+"),
@@ -27,10 +27,28 @@ AGE_CHOIСES = [
     ("eighteen", "18+")
 ]
 
+PURCHASE_CHOICES = [
+    ("pre-order", "Предзаказ"),
+    ("purchase", "Покупка"),
+]
+
+REL_TYPE_CHOICES = [
+    ("basket", "Корзина"),
+    ("personal_library", "Личная библиотека"),
+]
+
+REL_STATUS_CHOICES = [
+    ("selected", "Выбрано"),
+    ("not_selected", "Не выбрано"),
+    ("read", "Прочитано"),
+    ("reading", "Читаю"),
+
+]
+
 
 class Companies(models.Model):
     name = models.CharField(verbose_name="Название", max_length=40, blank=False)
-    status = models.CharField(verbose_name="Статус", choices=COMPANIES_CHOIСES, blank=False)
+    status = models.CharField(verbose_name="Статус", choices=COMPANIES_CHOICES, blank=False)
 
     class Meta:
         verbose_name = "Компания"
@@ -38,6 +56,74 @@ class Companies(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Books(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=True)
+    company = models.ForeignKey(
+        Companies,
+        verbose_name="Издательство",
+        related_name="books",
+        blank=False,
+        null=True,
+        on_delete=models.CASCADE
+    )
+    file = models.TextField(
+        verbose_name="Файл с книгой",
+        null=True
+    )
+    cover = models.TextField(
+        verbose_name="Файл с обложкой",
+        null=True
+    )
+    publication_date = models.DateField(verbose_name="Дата публикации", blank=False, null=True)
+    content = models.TextField(verbose_name="Содержание", blank=False, null=True)
+    price = models.DecimalField(
+        verbose_name="Цена",
+        decimal_places=0,
+        max_digits=12,
+        validators=[MinValueValidator(Decimal('1'))],
+        blank=False,
+        null=True
+    )
+    status = models.CharField(verbose_name="Статус", choices=BOOK_STATUS_CHOICES, blank=False, default="request")
+    age_limit = models.CharField(
+        verbose_name="Возрастное ограничение",
+        choices=AGE_CHOICES,
+        blank=False,
+        default="zero")
+    isbn = models.CharField(verbose_name="ISBN", blank=False, null=True)
+    bbk = models.CharField(verbose_name="ББК", blank=False, null=True)
+    udk = models.CharField(verbose_name="УДК", blank=False, null=True)
+    author_mark = models.CharField(verbose_name="Авторский знак", blank=False, null=True)
+    language = models.CharField(verbose_name="Язык", blank=False, null=True)
+    priority = models.DecimalField(
+        verbose_name="Приоритет отображения",
+        decimal_places=0,
+        max_digits=2, validators=[
+            MinValueValidator(Decimal('1')),
+            MaxValueValidator(Decimal('10'))
+        ],
+        blank=False,
+        null=True
+    )
+
+
+class Authors(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    b_day = models.DateField(verbose_name="Дата рождения", blank=True)
+    info = models.TextField(verbose_name="Дополнительная информация", blank=True)
+    books = models.ManyToManyField(Books)
+
+
+class Genres(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    books = models.ManyToManyField(Books)
+
+
+class Groups(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    genres = models.ManyToManyField(Genres)
 
 
 class UserManager(BaseUserManager):
@@ -90,6 +176,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(verbose_name="Аккаунт активирован", default=False)
     is_staff = models.BooleanField(verbose_name="Аккаунт уполномоченного лица", default=False)
     is_superuser = models.BooleanField(verbose_name="Аккаунт администратора", default=False)
+    favorite_g = models.ManyToManyField(Genres)
+    favorite_a = models.ManyToManyField(Authors)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -127,51 +215,41 @@ class Support_Messages(models.Model):
         verbose_name_plural = "Сообщения"
 
     def __str__(self):
-        return f"Сообщение {self.user} id:{self.id}"
+        return f"Сообщение {self.user} id:{self.pk}"
 
 
-class Books(models.Model):
-    name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=True)
-    company = models.ForeignKey(
-        Companies,
-        verbose_name="Издательство",
-        related_name="books",
+class Purchases(models.Model):
+    user = models.ForeignKey(
+        User,
+        verbose_name="Пользователь",
+        related_name="purchases",
+        blank=False,
+        null=True,
+        on_delete=models.CASCADE)
+    date_time = models.DateTimeField(verbose_name="Время совершения покупки", auto_now=True)
+    type = models.CharField(verbose_name="Тип покупки", choices=PURCHASE_CHOICES, blank=False, null=True)
+    books = models.ManyToManyField(Books, verbose_name="Позиции покупки", blank=False)
+
+
+class Relations_books(models.Model):
+    user = models.ForeignKey(
+        User,
+        verbose_name="Пользователь",
+        related_name="rel_books",
         blank=False,
         null=True,
         on_delete=models.CASCADE
     )
-    file = models.TextField(
-        verbose_name="Файл с книгой",
-        null=True
-    )
-    cover = models.TextField(
-        verbose_name="Файл с обложкой",
-        null=True
-    )
-    publication_date = models.DateField(verbose_name="Дата публикации", blank=False, null=True)
-    content = models.TextField(verbose_name="Содержание", blank=False, null=True)
-    price = models.DecimalField(
-        verbose_name="Цена",
-        decimal_places=0,
-        max_digits=12,
-        validators=[MinValueValidator(Decimal('1'))],
+    book = models.ForeignKey(
+        Books,
+        verbose_name="Книга",
+        related_name="rel_books",
         blank=False,
-        null=True
+        null=True,
+        on_delete=models.CASCADE
     )
-    status = models.CharField(verbose_name="Статус", choices=BOOK_STATUS_CHOICES, blank=False, default="request")
-    age_limit = models.CharField(verbose_name="Возрастное ограничение", choices=AGE_CHOIСES, blank=False, default="zero")
-    isbn = models.CharField(verbose_name="ISBN", blank=False, null=True)
-    bbk = models.CharField(verbose_name="ББК", blank=False, null=True)
-    udk = models.CharField(verbose_name="УДК", blank=False, null=True)
-    author_mark = models.CharField(verbose_name="Авторский знак", blank=False, null=True)
-    language = models.CharField(verbose_name="Язык", blank=False, null=True)
-    priority = models.DecimalField(
-        verbose_name="Приоритет отображения",
-        decimal_places=0,
-        max_digits=2, validators=[
-            MinValueValidator(Decimal('1')),
-            MaxValueValidator(Decimal('10'))
-        ],
-        blank=False,
-        null=True
-    )
+    is_favorite = models.BooleanField(verbose_name="Является избранной", default=False)
+    type = models.CharField(verbose_name="Тип", choices=REL_TYPE_CHOICES, default="basket")
+    status = models.CharField(verbose_name="Статус", choices=REL_STATUS_CHOICES, default="not_selected")
+
+
