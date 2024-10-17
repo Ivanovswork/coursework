@@ -45,6 +45,11 @@ REL_STATUS_CHOICES = [
 
 ]
 
+COMMENT_TYPE_CHOICES = [
+    ("feedback", "Отзыв"),
+    ("complaint", "Жалоба")
+]
+
 
 class Companies(models.Model):
     name = models.CharField(verbose_name="Название", max_length=40, blank=False)
@@ -108,6 +113,13 @@ class Books(models.Model):
         null=True
     )
 
+    class Meta:
+        verbose_name = "Книга"
+        verbose_name_plural = "Список книг"
+
+    def __str__(self):
+        return f"{self.name} {self.pk}"
+
 
 class Authors(models.Model):
     name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
@@ -115,15 +127,36 @@ class Authors(models.Model):
     info = models.TextField(verbose_name="Дополнительная информация", blank=True)
     books = models.ManyToManyField(Books)
 
+    class Meta:
+        verbose_name = "Автор"
+        verbose_name_plural = "Список авторов"
+
+    def __str__(self):
+        return f"{self.name}"
+
 
 class Genres(models.Model):
     name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
     books = models.ManyToManyField(Books)
 
+    class Meta:
+        verbose_name = "Жанр или тег"
+        verbose_name_plural = "Жанры и теги"
+
+    def __str__(self):
+        return f"{self.name}"
+
 
 class Groups(models.Model):
     name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
     genres = models.ManyToManyField(Genres)
+
+    class Meta:
+        verbose_name = "Группа"
+        verbose_name_plural = "Группы"
+
+    def __str__(self):
+        return f"{self.name}"
 
 
 class UserManager(BaseUserManager):
@@ -168,10 +201,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(verbose_name="e-mail", null=False, unique=True)
     name_validator = UnicodeUsernameValidator()
     name = models.CharField(
-        verbose_name="Имя", max_length=80, validators=[name_validator], blank=True
+        verbose_name="Имя",
+        max_length=80,
+        validators=[name_validator],
+        blank=True
     )
     company = models.ForeignKey(
-        Companies, verbose_name="Компания", related_name="worker", blank=True, null=True, on_delete=models.CASCADE
+        Companies,
+        verbose_name="Компания",
+        related_name="worker",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
     )
     is_active = models.BooleanField(verbose_name="Аккаунт активирован", default=False)
     is_staff = models.BooleanField(verbose_name="Аккаунт уполномоченного лица", default=False)
@@ -230,6 +271,13 @@ class Purchases(models.Model):
     type = models.CharField(verbose_name="Тип покупки", choices=PURCHASE_CHOICES, blank=False, null=True)
     books = models.ManyToManyField(Books, verbose_name="Позиции покупки", blank=False)
 
+    class Meta:
+        verbose_name = "Жанр или тег"
+        verbose_name_plural = "Жанры и теги"
+
+    def __str__(self):
+        return f"{self.pk}, {self.user}, {self.date_time}"
+
 
 class Relations_books(models.Model):
     user = models.ForeignKey(
@@ -252,4 +300,78 @@ class Relations_books(models.Model):
     type = models.CharField(verbose_name="Тип", choices=REL_TYPE_CHOICES, default="basket")
     status = models.CharField(verbose_name="Статус", choices=REL_STATUS_CHOICES, default="not_selected")
 
+    class Meta:
+        verbose_name = "Связь с книгой"
+        verbose_name_plural = "Связи с книгами"
 
+    def __str__(self):
+        return f"{self.pk}, {self.user}, {self.type}, {self.book}"
+
+
+class Comments(models.Model):
+    user = models.ForeignKey(User, related_name="comments", on_delete=models.CASCADE, null=True, blank=False)
+    rating = models.DecimalField(
+        verbose_name="Оценка",
+        decimal_places=0,
+        max_digits=2, validators=[
+            MinValueValidator(Decimal('1')),
+            MaxValueValidator(Decimal('5'))
+        ],
+        blank=False,
+        null=True
+    )
+    date_time = models.DateTimeField(verbose_name="Время публикации", auto_now=True)
+    type = models.CharField(verbose_name="Тип", choices=COMMENT_TYPE_CHOICES, default="feedback")
+    parent = models.ForeignKey(
+        'self',
+        verbose_name="Ответ на",
+        related_name="response",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = "Отзыв или жалоба"
+        verbose_name_plural = "Отзывы и жалобы"
+
+    def __str__(self):
+        return f"{self.pk}, {self.user}, {self.type}"
+
+
+class Comments_Authors(models.Model):
+    comment = models.OneToOneField(Comments, primary_key=True, on_delete=models.CASCADE, related_name="c_author")
+    parent = models.ForeignKey(
+        Authors,
+        verbose_name="Отзыв на автора",
+        related_name="c_author",
+        blank=False,
+        null=True,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = "Отзыв или жалоба на автора"
+        verbose_name_plural = "Отзывы или жалобы на автора"
+
+    def __str__(self):
+        return f"{self.pk}, {self.user}, {self.type}"
+
+
+class Comments_Books(models.Model):
+    comment = models.OneToOneField(Comments, primary_key=True, on_delete = models.CASCADE, related_name="comment_book")
+    parent = models.ForeignKey(
+        Books,
+        verbose_name="Отзыв на книгу",
+        related_name="comment_book",
+        blank=False,
+        null=True,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = "Отзыв или жалоба на книгу"
+        verbose_name_plural = "Отзывы и жалобы на книги"
+
+    def __str__(self):
+        return f"{self.pk}, {self.user}, {self.type}"
