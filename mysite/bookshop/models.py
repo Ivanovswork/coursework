@@ -63,6 +63,42 @@ class Companies(models.Model):
         return self.name
 
 
+class Groups(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+
+    class Meta:
+        verbose_name = "Группа"
+        verbose_name_plural = "Группы"
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class Authors(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    b_day = models.DateField(verbose_name="Дата рождения", blank=True)
+    info = models.TextField(verbose_name="Дополнительная информация", blank=True)
+
+    class Meta:
+        verbose_name = "Автор"
+        verbose_name_plural = "Список авторов"
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class Genres(models.Model):
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    groups = models.ManyToManyField(Groups)
+
+    class Meta:
+        verbose_name = "Жанр или тег"
+        verbose_name_plural = "Жанры и теги"
+
+    def __str__(self):
+        return f"{self.name}"
+
+
 class Books(models.Model):
     name = models.CharField(verbose_name="Название", max_length=20, null=True, blank=True)
     company = models.ForeignKey(
@@ -112,6 +148,8 @@ class Books(models.Model):
         blank=False,
         null=True
     )
+    genres = models.ManyToManyField(Genres)
+    authors = models.ManyToManyField(Authors)
 
     class Meta:
         verbose_name = "Книга"
@@ -119,44 +157,6 @@ class Books(models.Model):
 
     def __str__(self):
         return f"{self.name} {self.pk}"
-
-
-class Authors(models.Model):
-    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
-    b_day = models.DateField(verbose_name="Дата рождения", blank=True)
-    info = models.TextField(verbose_name="Дополнительная информация", blank=True)
-    books = models.ManyToManyField(Books)
-
-    class Meta:
-        verbose_name = "Автор"
-        verbose_name_plural = "Список авторов"
-
-    def __str__(self):
-        return f"{self.name}"
-
-
-class Genres(models.Model):
-    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
-    books = models.ManyToManyField(Books)
-
-    class Meta:
-        verbose_name = "Жанр или тег"
-        verbose_name_plural = "Жанры и теги"
-
-    def __str__(self):
-        return f"{self.name}"
-
-
-class Groups(models.Model):
-    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
-    genres = models.ManyToManyField(Genres)
-
-    class Meta:
-        verbose_name = "Группа"
-        verbose_name_plural = "Группы"
-
-    def __str__(self):
-        return f"{self.name}"
 
 
 class UserManager(BaseUserManager):
@@ -272,8 +272,8 @@ class Purchases(models.Model):
     books = models.ManyToManyField(Books, verbose_name="Позиции покупки", blank=False)
 
     class Meta:
-        verbose_name = "Жанр или тег"
-        verbose_name_plural = "Жанры и теги"
+        verbose_name = "Покупка"
+        verbose_name_plural = "Покупка"
 
     def __str__(self):
         return f"{self.pk}, {self.user}, {self.date_time}"
@@ -317,7 +317,7 @@ class Comments(models.Model):
             MinValueValidator(Decimal('1')),
             MaxValueValidator(Decimal('5'))
         ],
-        blank=False,
+        blank=True,
         null=True
     )
     date_time = models.DateTimeField(verbose_name="Время публикации", auto_now=True)
@@ -355,7 +355,7 @@ class Comments_Authors(models.Model):
         verbose_name_plural = "Отзывы или жалобы на автора"
 
     def __str__(self):
-        return f"{self.pk}, {self.user}, {self.type}"
+        return f"{self.pk}, {self.comment}"
 
 
 class Comments_Books(models.Model):
@@ -374,4 +374,4 @@ class Comments_Books(models.Model):
         verbose_name_plural = "Отзывы и жалобы на книги"
 
     def __str__(self):
-        return f"{self.pk}, {self.user}, {self.type}"
+        return f"{self.pk}, {self.comment}"
