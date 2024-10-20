@@ -9,9 +9,10 @@ from django.http import HttpResponseRedirect, HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.views import APIView
 
-from .models import Books
-
+from .models import Books, User
 
 from pydrive.auth import GoogleAuth
 
@@ -49,3 +50,6 @@ def download_file(request, id):
         return HttpResponse('No file found in database')
 
 
+class RegistrUserView(APIView):
+    queryset = User.objects.all()
+    permission_classes = ["AllowAny"]

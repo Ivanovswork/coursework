@@ -5,6 +5,7 @@ from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django_rest_passwordreset.tokens import get_token_generator
 
 
 COMPANIES_CHOICES = [
@@ -375,3 +376,24 @@ class Comments_Books(models.Model):
 
     def __str__(self):
         return f"{self.pk}, {self.comment}"
+
+
+class ConfirmEmailKey(models.Model):
+    @staticmethod
+    def generate_key():
+        return get_token_generator().generate_token()
+
+    user = models.ForeignKey(User, related_name="key", on_delete=models.CASCADE)
+    key = models.CharField(verbose_name="Ключ подтверждения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Ключ подтвердения"
+        verbose_name_plural = "Ключи подтверждения"
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = self.generate_key()
+        return super(ConfirmEmailKey, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Ключ подтверждения {self.key} пользователя {self.user.email}"
