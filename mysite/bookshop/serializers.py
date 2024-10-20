@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError
 from rest_framework.authtoken.models import Token
-from mysite.bookshop.models import User
+from .models import User
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -9,11 +9,11 @@ class UserRGSTRSerializer(ModelSerializer):
     class Meta:
         model = User
 
-        fields = ["email", "username", "password", "password2"]
+        fields = ["email", "password", "password2"]
 
     def save(self, **kwargs):
         user = User(
-            email=self.validated_data["email"], username=self.validated_data["username"]
+            email=self.validated_data["email"]
         )
 
         password = self.validated_data["password"]

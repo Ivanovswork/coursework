@@ -2,17 +2,20 @@ import ast
 import codecs
 import os
 import tempfile
-
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpResponseRedirect, HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 
 from .models import Books, User, ConfirmEmailKey
+from .email_class import Email
 
 from pydrive.auth import GoogleAuth
 
@@ -54,7 +57,7 @@ def download_file(request, id):
 
 class RegistrUserView(APIView):
     queryset = User.objects.all()
-    permission_classes = ["AllowAny"]
+    permission_classes = [AllowAny]
     serializer_class = UserRGSTRSerializer
 
     def post(self, request, *args, **kwargs):
@@ -65,9 +68,27 @@ class RegistrUserView(APIView):
             key = ConfirmEmailKey(user=user)
             key.save()
 
-            send_email(key.key, user.email)
+            print(key.key, user.email)
+
+            Email.send_email(key.key, user.email)
 
             return Response(
                 {"status": "Registration has been done"}, status=status.HTTP_200_OK
             )
         return Response(user.errors)
+
+
+@api_view()
+def confirm_email(request, key, *args, **kwargs):
+    user_key = ConfirmEmailKey.objects.filter(key=key).first()
+    if user_key:
+        user = user_key.user
+        user.is_active = True
+        user.save()
+        return Response(
+            {"status": "email has been comfirmed"}, status=status.HTTP_200_OK
+        )
+    else:
+        return Response(
+            {"status": "User with this key not found"}, status=status.HTTP_404_NOT_FOUND
+        )

@@ -11,11 +11,11 @@ load_dotenv()
 class Email():
     @staticmethod
     def send_email(key, email):
-        sleep(10)
+        sleep(2)
 
         send_mail(
             os.getenv("EMAIL"),
-            f"http://127.0.0.1:8000/confirm/{key}/",
+            f"http://127.0.0.1:8000/bookshop/confirm/{key}/",
             EMAIL_HOST_USER,
             [email],
             fail_silently=False,
