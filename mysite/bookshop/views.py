@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 
-from .models import Books, User
+from .models import Books, User, ConfirmEmailKey
 
 from pydrive.auth import GoogleAuth
 
@@ -20,6 +20,8 @@ from .script import create_and_upload_file
 import json
 from wsgiref.util import FileWrapper
 import base64
+
+from .serializers import UserRGSTRSerializer
 
 
 @csrf_exempt
@@ -53,3 +55,19 @@ def download_file(request, id):
 class RegistrUserView(APIView):
     queryset = User.objects.all()
     permission_classes = ["AllowAny"]
+    serializer_class = UserRGSTRSerializer
+
+    def post(self, request, *args, **kwargs):
+        user = UserRGSTRSerializer(data=request.data)
+
+        if user.is_valid():
+            user = user.save()
+            key = ConfirmEmailKey(user=user)
+            key.save()
+
+            send_email(key.key, user.email)
+
+            return Response(
+                {"status": "Registration has been done"}, status=status.HTTP_200_OK
+            )
+        return Response(user.errors)
