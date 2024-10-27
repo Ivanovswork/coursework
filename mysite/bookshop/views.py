@@ -4,17 +4,18 @@ from django.core.exceptions import ValidationError
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Books, User, ConfirmEmailKey
+from .models import Books, User, ConfirmEmailKey, Groups
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
-from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer
+from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
+     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -146,8 +147,50 @@ def delete_staff_status(request):
     user = UserDeleteStaffStatusSerializer(data=request.data)
     if request.method == 'POST' and user.is_valid():
         user.save()
-        return Response({"status": "User is not staff now"}, status=status.HTTP_200_OK)
+        return Response({"status": "Now user is not staff"}, status=status.HTTP_200_OK)
     return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GroupView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        else:
+            return [IsSuperuser()]
+
+    def get(self, request):
+        groups = Groups.objects.all()
+        serializer = GroupSerializer(groups, many=True).data
+        print(serializer)
+        response = {}
+        for i in range(len(serializer)):
+            response[serializer[i]["id"]] = serializer[i]["name"]
+        return JsonResponse(response, status=status.HTTP_200_OK, json_dumps_params={'ensure_ascii': False})
+
+    def post(self, request):
+        group = PostDeleteGroupSerializer(data=request.data)
+        if group.is_valid():
+            group.save()
+            return Response({"status": "New group is saved"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        group = PatchGroupSerializer(data=request.data)
+
+        if group.is_valid():
+            group.save()
+            return Response({"status": "Group is updated"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        group = PostDeleteGroupSerializer(data=request.data)
+        if group.is_valid():
+            group = Groups.objects.filter(name=request.data["name"])
+            if group.exists():
+                group.delete()
+                return Response({"status": "Group is deleted"}, status=status.HTTP_200_OK)
+            return Response({"status": "Group with this name is not exist"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])

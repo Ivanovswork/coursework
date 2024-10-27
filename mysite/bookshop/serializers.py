@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField
 from rest_framework.authtoken.models import Token
-from .models import User, Companies
+from .models import User, Companies, Groups
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -108,3 +108,50 @@ class UserDeleteStaffStatusSerializer(ModelSerializer):
         user.save()
 
         return user
+
+
+class PostDeleteGroupSerializer(ModelSerializer):
+    class Meta:
+        model = Groups
+        fields = ["name"]
+
+    def validate(self, attrs):
+        try:
+            name = attrs["name"]
+            return attrs
+        except Exception:
+            raise ValidationError({"status": "Need name in request"})
+
+    def save(self, **kwargs):
+        group = Groups.objects.create(name=self.validated_data["name"])
+        group.save()
+
+        return group
+
+
+class GroupSerializer(ModelSerializer):
+    class Meta:
+        model = Groups
+        fields = ["id", "name"]
+
+
+class PatchGroupSerializer(ModelSerializer):
+    new_name = CharField()
+
+    class Meta:
+        model = Groups
+        fields = ["name", "new_name"]
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        if not Groups.objects.filter(name=name).exists():
+            raise ValidationError({"name": "Группы с таким name не существует"})
+
+        return attrs
+
+    def save(self, **kwargs):
+        group = Groups.objects.filter(name=self.validated_data["name"]).first()
+        group.name = self.validated_data["new_name"]
+        group.save()
+
+        return group
