@@ -387,7 +387,7 @@ class ConfirmEmailKey(models.Model):
     key = models.CharField(verbose_name="Ключ подтверждения", null=True, blank=True)
 
     class Meta:
-        verbose_name = "Ключ подтвердения"
+        verbose_name = "Ключ подтверждения"
         verbose_name_plural = "Ключи подтверждения"
 
     def save(self, *args, **kwargs):

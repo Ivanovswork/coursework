@@ -9,7 +9,7 @@ class IsSuperuser(BasePermission):
 
 
 class IsStaff(BasePermission):
-    def has_object_permission(self, request, view, obj):
+    def has_permission(self, request, view):
         if request.method == "GET":
             return True
-        return request.user.is_staff and request.user.company == obj.company
+        return request.user.is_staff

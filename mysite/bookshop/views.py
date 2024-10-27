@@ -1,33 +1,20 @@
 import ast
-import codecs
-import os
-import tempfile
-
 from django.contrib.auth import authenticate
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-from django.http import HttpResponseRedirect, HttpResponse, FileResponse
+from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 
 from .models import Books, User, ConfirmEmailKey
 from .email_class import Email
-from .serializers import UserChangePasswordSerializer
-
-from pydrive.auth import GoogleAuth
-
-from .script import create_and_upload_file
-import json
-from wsgiref.util import FileWrapper
-import base64
+from .permissions import IsStaff, IsSuperuser
+from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -42,32 +29,16 @@ def is_owner(request):
         return False
 
 
-@csrf_exempt
-@api_view(['POST'])
-def upload_file(request):
-    if request.method == 'POST':
-        file = request.FILES['file']
-        file_str = file.read()
-        file_model = Books.objects.create(file=file_str)
-        return HttpResponse('File saved to database')
-
-    return HttpResponse('Invalid request method')
-
-
-@csrf_exempt
-@api_view(['GET'])
-def download_file(request, id):
-    file_model = Books.objects.filter(pk=id).first()
-    print(file_model.pk)
-    if file_model:
-        file_data = file_model.file
-        response = HttpResponse(
-            ast.literal_eval(file_data),
-            content_type="application/pdf")
-        response['Content-Disposition'] = 'attachment; filename="file.pdf"'
-        return response
-    else:
-        return HttpResponse('No file found in database')
+def is_staff_this_company(request):
+    try:
+        company = request.data.get("company")
+        print(company)
+        print(request.user.company)
+        if company == request.user.company.pk:
+            return True
+        return False
+    except Exception as e:
+        return False
 
 
 class RegistrUserView(APIView):
@@ -159,3 +130,49 @@ def change_password(request, *args, **kwargs):
     return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsSuperuser])
+def make_it_staff(request):
+    user = UserToStaffSerializer(data=request.data)
+    if request.method == 'POST' and user.is_valid():
+        user.save()
+        return Response({"status": "User is staff now"}, status=status.HTTP_200_OK)
+    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsSuperuser])
+def delete_staff_status(request):
+    user = UserDeleteStaffStatusSerializer(data=request.data)
+    if request.method == 'POST' and user.is_valid():
+        user.save()
+        return Response({"status": "User is not staff now"}, status=status.HTTP_200_OK)
+    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsStaff])
+def upload_file(request):
+    if request.method == 'POST' and is_staff_this_company(request):
+        # file = request.FILES['file']
+        # file_str = file.read()
+        # file_model = Books.objects.create(file=file_str)
+        return HttpResponse('File saved to database')
+
+    return HttpResponse('Invalid request method')
+
+
+@csrf_exempt
+@api_view(['GET'])
+def download_file(request, id):
+    file_model = Books.objects.filter(pk=id).first()
+    print(file_model.pk)
+    if file_model:
+        file_data = file_model.file
+        response = HttpResponse(
+            ast.literal_eval(file_data),
+            content_type="application/pdf")
+        response['Content-Disposition'] = 'attachment; filename="file.pdf"'
+        return response
+    else:
+        return HttpResponse('No file found in database')
