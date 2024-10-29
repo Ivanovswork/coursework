@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField
 from rest_framework.authtoken.models import Token
-from .models import User, Companies, Groups
+from .models import User, Companies, Groups, Genres
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -155,3 +155,50 @@ class PatchGroupSerializer(ModelSerializer):
         group.save()
 
         return group
+
+
+class PostDeleteGenreSerializer(ModelSerializer):
+    class Meta:
+        model = Genres
+        fields = ["name"]
+
+    def validate(self, attrs):
+        try:
+            name = attrs["name"]
+            return attrs
+        except Exception:
+            raise ValidationError({"status": "Need name in request"})
+
+    def save(self, **kwargs):
+        genre = Genres.objects.create(name=self.validated_data["name"])
+        genre.save()
+
+        return genre
+
+
+class GenreSerializer(ModelSerializer):
+    class Meta:
+        model = Genres
+        fields = ["id", "name"]
+
+
+class PatchGenreSerializer(ModelSerializer):
+    new_name = CharField()
+
+    class Meta:
+        model = Genres
+        fields = ["name", "new_name"]
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        if not Genres.objects.filter(name=name).exists():
+            raise ValidationError({"name": "Жанра с таким name не существует"})
+
+        return attrs
+
+    def save(self, **kwargs):
+        genre = Genres.objects.filter(name=self.validated_data["name"]).first()
+        genre.name = self.validated_data["new_name"]
+        genre.save()
+
+        return genre
