@@ -11,11 +11,12 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Books, User, ConfirmEmailKey, Groups
+from .models import Books, User, ConfirmEmailKey, Groups, Genres
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
-     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer
+    GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
+    PatchGenreSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -190,6 +191,48 @@ class GroupView(APIView):
                 group.delete()
                 return Response({"status": "Group is deleted"}, status=status.HTTP_200_OK)
             return Response({"status": "Group with this name is not exist"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GenresView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        else:
+            return [IsSuperuser()]
+
+    def get(self, request):
+        genres = Genres.objects.all()
+        serializer = GenreSerializer(genres, many=True).data
+        print(serializer)
+        response = {}
+        for i in range(len(serializer)):
+            response[serializer[i]["id"]] = serializer[i]["name"]
+        return JsonResponse(response, status=status.HTTP_200_OK, json_dumps_params={'ensure_ascii': False})
+
+    def post(self, request):
+        genre = PostDeleteGenreSerializer(data=request.data)
+        if genre.is_valid():
+            genre.save()
+            return Response({"status": "New genre is saved"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        genre = PatchGenreSerializer(data=request.data)
+
+        if genre.is_valid():
+            genre.save()
+            return Response({"status": "Genre is updated"}, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        genre = PostDeleteGroupSerializer(data=request.data)
+        if genre.is_valid():
+            genre = Genres.objects.filter(name=request.data["name"])
+            if genre.exists():
+                genre.delete()
+                return Response({"status": "Genre is deleted"}, status=status.HTTP_200_OK)
+            return Response({"status": "Genre with this name is not exist"}, status=status.HTTP_200_OK)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 

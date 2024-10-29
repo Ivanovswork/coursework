@@ -13,5 +13,6 @@ urlpatterns = [
     path("change_password/", views.change_password, name="change_password"),
     path("make_user_staff/", views.make_it_staff, name="make_user_staff"),
     path("delete_staff_status/", views.delete_staff_status, name="delete_staff_status"),
-    path("group/", views.GroupView.as_view(), name="group")
+    path("group/", views.GroupView.as_view(), name="group"),
+    path("genre/", views.GenresView.as_view(), name="genre")
 ]
