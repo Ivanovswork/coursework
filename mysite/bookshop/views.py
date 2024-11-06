@@ -6,20 +6,48 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
-from .models import Books, User, ConfirmEmailKey, Groups, Genres
+from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
-    PatchGenreSerializer
+    PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer
 
 from .serializers import UserRGSTRSerializer
 
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated, IsStaff])
+# def upload_file(request):
+#     if request.method == 'POST' and is_staff_this_company(request):
+#         # file = request.FILES['file']
+#         # file_str = file.read()
+#         # file_model = Books.objects.create(file=file_str)
+#         return HttpResponse('File saved to database')
+#
+#     return HttpResponse('Invalid request method')
+#
+#
+# @csrf_exempt
+# @api_view(['GET'])
+# def download_file(request, id):
+#     file_model = Books.objects.filter(pk=id).first()
+#     print(file_model.pk)
+#     if file_model:
+#         file_data = file_model.file
+#         response = HttpResponse(
+#             ast.literal_eval(file_data),
+#             content_type="application/pdf")
+#         response['Content-Disposition'] = 'attachment; filename="file.pdf"'
+#         return response
+#     else:
+#         return HttpResponse('No file found in database')
 
 def is_owner(request):
     try:
@@ -162,17 +190,18 @@ class GroupView(APIView):
     def get(self, request):
         groups = Groups.objects.all()
         serializer = GroupSerializer(groups, many=True).data
-        print(serializer)
-        response = {}
-        for i in range(len(serializer)):
-            response[serializer[i]["id"]] = serializer[i]["name"]
-        return JsonResponse(response, status=status.HTTP_200_OK, json_dumps_params={'ensure_ascii': False})
+        # print(serializer)
+        # response = {}
+        # for i in range(len(serializer)):
+        #     response[serializer[i]["id"]] = serializer[i]["name"]
+        return Response(serializer, status=status.HTTP_200_OK)
+
 
     def post(self, request):
         group = PostDeleteGroupSerializer(data=request.data)
         if group.is_valid():
             group.save()
-            return Response({"status": "New group is saved"}, status=status.HTTP_200_OK)
+            return Response(group.data, status=status.HTTP_201_CREATED)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
@@ -180,7 +209,7 @@ class GroupView(APIView):
 
         if group.is_valid():
             group.save()
-            return Response({"status": "Group is updated"}, status=status.HTTP_200_OK)
+            return Response(group.data, status=status.HTTP_200_OK)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
@@ -204,17 +233,17 @@ class GenresView(APIView):
     def get(self, request):
         genres = Genres.objects.all()
         serializer = GenreSerializer(genres, many=True).data
-        print(serializer)
-        response = {}
-        for i in range(len(serializer)):
-            response[serializer[i]["id"]] = serializer[i]["name"]
-        return JsonResponse(response, status=status.HTTP_200_OK, json_dumps_params={'ensure_ascii': False})
+        # print(serializer)
+        # response = {}
+        # for i in range(len(serializer)):
+        #     response[serializer[i]["id"]] = serializer[i]["name"]
+        return Response(serializer, status=status.HTTP_200_OK)
 
     def post(self, request):
         genre = PostDeleteGenreSerializer(data=request.data)
         if genre.is_valid():
             genre.save()
-            return Response({"status": "New genre is saved"}, status=status.HTTP_200_OK)
+            return Response(genre.data, status=status.HTTP_201_CREATED)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
@@ -222,7 +251,7 @@ class GenresView(APIView):
 
         if genre.is_valid():
             genre.save()
-            return Response({"status": "Genre is updated"}, status=status.HTTP_200_OK)
+            return Response(genre.data, status=status.HTTP_200_OK)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
@@ -237,28 +266,84 @@ class GenresView(APIView):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsStaff])
-def upload_file(request):
-    if request.method == 'POST' and is_staff_this_company(request):
-        # file = request.FILES['file']
-        # file_str = file.read()
-        # file_model = Books.objects.create(file=file_str)
-        return HttpResponse('File saved to database')
-
-    return HttpResponse('Invalid request method')
+@permission_classes([IsAuthenticated, IsSuperuser])
+def add_genre_to_group(request):
+    genre = AddGenreToGroupSerializer(data=request.data)
+    if request.method == 'POST' and genre.is_valid():
+        genre.save()
+        return Response({"status": "Genre added to the group"}, status=status.HTTP_200_OK)
+    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
 @api_view(['GET'])
-def download_file(request, id):
-    file_model = Books.objects.filter(pk=id).first()
-    print(file_model.pk)
-    if file_model:
-        file_data = file_model.file
-        response = HttpResponse(
-            ast.literal_eval(file_data),
-            content_type="application/pdf")
-        response['Content-Disposition'] = 'attachment; filename="file.pdf"'
-        return response
-    else:
-        return HttpResponse('No file found in database')
+@permission_classes([AllowAny])
+def group_genre(request):
+    groups = Groups.objects.all()
+    response = []
+    for group in groups:
+        res = {}
+        service = {}
+        print(group)
+        print(group.genres.all())
+        for genre in group.genres.all():
+            service[f"{genre.pk}"] = genre.name
+        res[group.name] = service
+        response.append(res)
+    # return JsonResponse(response, status=status.HTTP_200_OK, json_dumps_params={'ensure_ascii': False})
+    return Response(response, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsSuperuser])
+def delete_genre_from_group(request):
+    genre = DeleteGenreFromGroupSerializer(data=request.data)
+    if request.method == 'POST' and genre.is_valid():
+        genre.save()
+        return Response({"status": "Genre deleted to the group"}, status=status.HTTP_200_OK)
+    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AuthorsViewSet(viewsets.ModelViewSet):
+    queryset = Authors.objects.all()
+    serializer_class = AuthorSerializer
+
+    def get_permissions(self):
+        if self.action in ["create"]:
+            return [IsAuthenticated(), IsStaff()]
+        elif self.action in ["update"]:
+            return [IsAuthenticated()]
+        return [AllowAny()]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if request.user.is_superuser:
+            serializer.validated_data["status"] = "active"
+            serializer.save()
+        else:
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk=None, **kwargs):
+        author = get_object_or_404(self.queryset, pk=pk)
+        if author.status == "request" and request.user:
+            if request.user.is_superuser:
+                serializer = self.get_serializer(author)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        else:
+            serializer = self.get_serializer(author)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        if request.user:
+            if request.user.is_superuser:
+                query = self.queryset
+                serializer = self.get_serializer(query, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        query = self.queryset.filter(status="active")
+        serializer = self.get_serializer(query, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, pk=None, **kwargs):

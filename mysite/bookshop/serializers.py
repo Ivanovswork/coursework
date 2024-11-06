@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField
 from rest_framework.authtoken.models import Token
-from .models import User, Companies, Groups, Genres
+from .models import User, Companies, Groups, Genres, Authors
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -202,3 +202,76 @@ class PatchGenreSerializer(ModelSerializer):
         genre.save()
 
         return genre
+
+
+class AddGenreToGroupSerializer(ModelSerializer):
+    group = CharField()
+
+    class Meta:
+        model = Genres
+        fields = ["name", "group"]
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        group = attrs.get("group")
+        print(name, group)
+
+        if not Genres.objects.filter(name=name).exists() or not Groups.objects.filter(name=group).exists():
+            raise ValidationError({"status": "Bad request"})
+        elif Genres.objects.filter(name=name).first().groups.filter(name=group).exists():
+            print(Genres.objects.filter(name=name).first().groups.filter(name=group).first())
+            raise ValidationError({"status": "Bad request"})
+
+        return attrs
+
+    def save(self, **kwargs):
+        genre = Genres.objects.filter(name=self.validated_data["name"]).first()
+        group = Groups.objects.filter(name=self.validated_data["group"]).first()
+        genre.groups.add(group)
+
+        genre.save()
+
+        return genre
+
+
+class DeleteGenreFromGroupSerializer(ModelSerializer):
+    group = CharField()
+
+    class Meta:
+        model = Genres
+        fields = ["name", "group"]
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        group = attrs.get("group")
+        print(name, group)
+
+        if not Genres.objects.filter(name=name).exists() or not Groups.objects.filter(name=group).exists():
+            raise ValidationError({"status": "Bad request"})
+        elif not Genres.objects.filter(name=name).first().groups.filter(name=group).exists():
+            print(Genres.objects.filter(name=name).first().groups.filter(name=group).first())
+            raise ValidationError({"status": "Bad request"})
+
+        return attrs
+
+    def save(self, **kwargs):
+        genre = Genres.objects.filter(name=self.validated_data["name"]).first()
+        group = Groups.objects.filter(name=self.validated_data["group"]).first()
+        genre.groups.remove(group)
+
+        genre.save()
+
+        return genre
+
+
+class AuthorSerializer(ModelSerializer):
+    class Meta:
+        model = Authors
+        fields = "__all__"
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        print(name)
+        if name is None:
+            raise ValidationError({"status": "Bad request"})
+        return attrs

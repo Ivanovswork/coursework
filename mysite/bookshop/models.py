@@ -17,7 +17,14 @@ BOOK_STATUS_CHOICES = [
     ("released", "Выпущена"),
     ("blocked", "Заблокирована"),
     ("coming soon", "Анонс"),
-    ("request", "Заявка")
+    ("request", "Заявка"),
+    ("rejected", "Отклонена")
+]
+
+AUTHOR_STATUS_CHOICES = [
+    ("active", "Активен"),
+    ("request", "Заявка"),
+    ("rejected", "Отклонен")
 ]
 
 AGE_CHOICES = [
@@ -77,8 +84,10 @@ class Groups(models.Model):
 
 class Authors(models.Model):
     name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
-    b_day = models.DateField(verbose_name="Дата рождения", blank=True)
-    info = models.TextField(verbose_name="Дополнительная информация", blank=True)
+    b_day = models.DateField(verbose_name="Дата рождения", blank=False, null=True)
+    info = models.TextField(verbose_name="Дополнительная информация", blank=False, null=True)
+    status = models.CharField(verbose_name="Статус", choices=AUTHOR_STATUS_CHOICES, blank=False, default="request")
+    reason = models.TextField(verbose_name="Причина отказа", blank=True, null=True)
 
     class Meta:
         verbose_name = "Автор"
@@ -90,7 +99,7 @@ class Authors(models.Model):
 
 class Genres(models.Model):
     name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
-    groups = models.ManyToManyField(Groups)
+    groups = models.ManyToManyField(Groups, related_name="genres")
 
     class Meta:
         verbose_name = "Жанр или тег"
@@ -151,6 +160,7 @@ class Books(models.Model):
     )
     genres = models.ManyToManyField(Genres)
     authors = models.ManyToManyField(Authors)
+    reason = models.TextField(verbose_name="Причина отказа", blank=True, null=True)
 
     class Meta:
         verbose_name = "Книга"
