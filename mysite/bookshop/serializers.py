@@ -275,3 +275,10 @@ class AuthorSerializer(ModelSerializer):
         if name is None:
             raise ValidationError({"status": "Bad request"})
         return attrs
+
+
+class UpdateAuthorSerializer(ModelSerializer):
+    class Meta:
+        model = Authors
+        fields = "__all__"
+

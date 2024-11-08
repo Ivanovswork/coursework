@@ -310,8 +310,8 @@ class AuthorsViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["create"]:
             return [IsAuthenticated(), IsStaff()]
-        elif self.action in ["update"]:
-            return [IsAuthenticated()]
+        elif self.action in ["update", "delete"]:
+            return [IsAuthenticated(), IsSuperuser()]
         return [AllowAny()]
 
     def create(self, request, *args, **kwargs):
@@ -346,4 +346,22 @@ class AuthorsViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(query, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def update(self, request, pk=None, **kwargs):
+    def update(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            author = get_object_or_404(self.queryset, pk=pk)
+            serializer = self.get_serializer(author, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            author = get_object_or_404(self.queryset, pk=pk)
+            author.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
