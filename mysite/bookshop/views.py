@@ -13,12 +13,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
-from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors
+from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
-    PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer
+    PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer, \
+    CompaniesSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -403,5 +404,53 @@ class AuthorsViewSet(viewsets.ModelViewSet):
                 return Response(status=status.HTTP_200_OK)
             else:
                 return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class CompaniesViewSet(viewsets.ModelViewSet):
+    queryset = Companies.objects.all()
+    serializer_class = CompaniesSerializer
+    permission_classes = [IsAuthenticated, IsSuperuser]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if request.data["name"] and request.data["status"]:
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, pk=None, **kwargs):
+        if request.user.is_superuser:
+            company = get_object_or_404(self.queryset, pk=pk)
+            serializer = self.get_serializer(company)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def list(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            query = self.queryset
+            serializer = self.get_serializer(query, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            company = get_object_or_404(self.queryset, pk=pk)
+            serializer = self.get_serializer(company, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            company = get_object_or_404(self.queryset, pk=pk)
+            company.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

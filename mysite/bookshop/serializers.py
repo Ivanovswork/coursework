@@ -277,8 +277,11 @@ class AuthorSerializer(ModelSerializer):
         return attrs
 
 
-class UpdateAuthorSerializer(ModelSerializer):
+class CompaniesSerializer(ModelSerializer):
     class Meta:
-        model = Authors
+        model = Companies
         fields = "__all__"
+
+
+
 
