@@ -6,6 +6,7 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import action
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -364,4 +365,43 @@ class AuthorsViewSet(viewsets.ModelViewSet):
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(detail=True, methods=['patch'])
+    def block(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            author = get_object_or_404(self.queryset, pk=pk)
+            author.status = "blocked"
+            author.save()
+            """
+            код, который блокирует все книги заблокированного автора или убирает автора из авторов книги
+            """
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(detail=True, methods=['patch'])
+    def accept(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            author = get_object_or_404(self.queryset, pk=pk)
+            if author.status != "request":
+                return Response({"status": "Author status is not request"}, status=status.HTTP_403_FORBIDDEN)
+            author.status = "active"
+            author.save()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(detail=True, methods=['patch'])
+    def reject(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            if request.data["reason"]:
+                author = get_object_or_404(self.queryset, pk=pk)
+                if author.status != "request":
+                    return Response({"status": "Author status is not request"}, status=status.HTTP_403_FORBIDDEN)
+                author.status = "rejected"
+                author.reason = request.data["reason"]
+                author.save()
+                return Response(status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

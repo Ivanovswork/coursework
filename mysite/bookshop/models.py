@@ -24,7 +24,8 @@ BOOK_STATUS_CHOICES = [
 AUTHOR_STATUS_CHOICES = [
     ("active", "Активен"),
     ("request", "Заявка"),
-    ("rejected", "Отклонен")
+    ("rejected", "Отклонен"),
+    ("blocked", "Заблокирован")
 ]
 
 AGE_CHOICES = [
