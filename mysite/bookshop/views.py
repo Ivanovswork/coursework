@@ -463,3 +463,36 @@ class CompaniesViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class FavoriteGTView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        genres = user.favorite_g.all()
+        serializer = GenreSerializer(genres, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user = request.user
+        print(user)
+        try:
+            genre = request.data["genre_name"]
+            user.favorite_g.add(Genres.objects.filter(name=genre).first())
+            user.save()
+            return Response({"status": "Genre added"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        user = request.user
+        print(user)
+        try:
+            genre = request.data["genre_name"]
+            user.favorite_g.remove(Genres.objects.filter(name=genre).first())
+            user.save()
+            return Response({"status": "Genre deleted"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)

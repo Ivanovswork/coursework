@@ -308,3 +308,8 @@ class PatchCompanySerializer(ModelSerializer):
         instance.save()
         return instance
 
+
+# class PostDeleteFavoriteGenreSerializer(ModelSerializer):
+#
+#     class Meta:
+#         model = Genre
