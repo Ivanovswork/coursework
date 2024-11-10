@@ -24,5 +24,6 @@ urlpatterns = [
     path("genre_from_group/", views.delete_genre_from_group, name="genre_from_group"),
     path("favorite_genres/", views.FavoriteGTView.as_view(), name="favorite_genres"),
     path("favorite_authors/", views.FavoriteAuthorsView.as_view(), name="favorite_authors"),
+    path("support_message/", views.SupportMessagesView.as_view(), name="support_message"),
     path('', include(router.urls)),
 ]

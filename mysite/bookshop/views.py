@@ -13,13 +13,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
-from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies
+from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies, Support_Messages
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
     PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer, \
-    CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer
+    CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -529,3 +529,50 @@ class FavoriteAuthorsView(APIView):
             return Response({"status": "Author deleted"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SupportMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.is_superuser:
+            print("a")
+            try:
+                chat_owner = User.objects.filter(pk=request.data["owner"]).first()
+                text = request.data["text"]
+                print(chat_owner)
+                message = Support_Messages.objects.create(user=user, owner=chat_owner, text=text)
+                serializer = MessageSerializer(message)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                text = request.data["text"]
+                print(text)
+                message = Support_Messages.objects.create(user=user, owner=user, text=text)
+                print(message)
+                serializer = MessageSerializer(message)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        user = request.user
+        if user.is_superuser:
+            try:
+                chat_owner = User.objects.filter(pk=request.data["owner"]).first()
+                messages = Support_Messages.objects.filter(owner=chat_owner).order_by("date_time")
+                serializer = MessageSerializer(messages, many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                messages = Support_Messages.objects.filter(owner=user).order_by("date_time")
+                serializer = MessageSerializer(messages, many=True)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+

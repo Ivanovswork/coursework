@@ -252,10 +252,9 @@ class Support_Messages(models.Model):
         null=False,
         on_delete=models.CASCADE
     )
-    parent_message = models.ForeignKey(
-        "self",
-        verbose_name="Ответ на",
-        related_name="response",
+    owner = models.ForeignKey(
+        User,
+        verbose_name="Владелец чата",
         blank=True,
         null=True,
         on_delete=models.CASCADE

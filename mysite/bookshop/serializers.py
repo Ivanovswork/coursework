@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField
 from rest_framework.authtoken.models import Token
-from .models import User, Companies, Groups, Genres, Authors
+from .models import User, Companies, Groups, Genres, Authors, Support_Messages
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -309,7 +309,7 @@ class PatchCompanySerializer(ModelSerializer):
         return instance
 
 
-# class PostDeleteFavoriteGenreSerializer(ModelSerializer):
-#
-#     class Meta:
-#         model = Genre
+class MessageSerializer(ModelSerializer):
+    class Meta:
+        model = Support_Messages
+        fields = "__all__"
