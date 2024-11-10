@@ -61,8 +61,8 @@ COMMENT_TYPE_CHOICES = [
 
 
 class Companies(models.Model):
-    name = models.CharField(verbose_name="Название", max_length=40, blank=False)
-    status = models.CharField(verbose_name="Статус", choices=COMPANIES_CHOICES, blank=False)
+    name = models.CharField(verbose_name="Название", max_length=40, blank=False, null=True)
+    status = models.CharField(verbose_name="Статус", choices=COMPANIES_CHOICES, blank=False, default="self-publishing")
 
     class Meta:
         verbose_name = "Компания"

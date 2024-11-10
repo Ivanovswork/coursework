@@ -277,11 +277,34 @@ class AuthorSerializer(ModelSerializer):
         return attrs
 
 
+class PatchAuthorSerializer(ModelSerializer):
+    class Meta:
+        model = Authors
+        fields = "__all__"
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.b_day = validated_data.get('b_day', instance.b_day)
+        instance.info = validated_data.get('info', instance.info)
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+        return instance
+
+
 class CompaniesSerializer(ModelSerializer):
     class Meta:
         model = Companies
         fields = "__all__"
 
 
+class PatchCompanySerializer(ModelSerializer):
+    class Meta:
+        model = Companies
+        fields = ["name", "status"]
 
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+        return instance
 

@@ -19,7 +19,7 @@ from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
     PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer, \
-    CompaniesSerializer
+    CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -312,9 +312,14 @@ class AuthorsViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["create"]:
             return [IsAuthenticated(), IsStaff()]
-        elif self.action in ["update", "delete"]:
+        elif self.action in ["partial_update", "delete"]:
             return [IsAuthenticated(), IsSuperuser()]
         return [AllowAny()]
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return PatchAuthorSerializer
+        return AuthorSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -348,7 +353,7 @@ class AuthorsViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(query, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def update(self, request, pk=None, *args, **kwargs):
+    def partial_update(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             author = get_object_or_404(self.queryset, pk=pk)
             serializer = self.get_serializer(author, data=request.data)
@@ -410,8 +415,12 @@ class AuthorsViewSet(viewsets.ModelViewSet):
 
 class CompaniesViewSet(viewsets.ModelViewSet):
     queryset = Companies.objects.all()
-    serializer_class = CompaniesSerializer
     permission_classes = [IsAuthenticated, IsSuperuser]
+    
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return PatchCompanySerializer
+        return CompaniesSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -437,7 +446,7 @@ class CompaniesViewSet(viewsets.ModelViewSet):
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def update(self, request, pk=None, *args, **kwargs):
+    def partial_update(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             company = get_object_or_404(self.queryset, pk=pk)
             serializer = self.get_serializer(company, data=request.data)
