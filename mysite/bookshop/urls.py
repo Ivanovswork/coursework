@@ -22,6 +22,7 @@ urlpatterns = [
     path("genre_to_group/", views.add_genre_to_group, name="genre_to_group"),
     path("group_genre/", views.group_genre, name="group_genre"),
     path("genre_from_group/", views.delete_genre_from_group, name="genre_from_group"),
-    path("favorite_genre/", views.FavoriteGTView.as_view(), name="favorite_genre"),
+    path("favorite_genres/", views.FavoriteGTView.as_view(), name="favorite_genres"),
+    path("favorite_authors/", views.FavoriteAuthorsView.as_view(), name="favorite_authors"),
     path('', include(router.urls)),
 ]

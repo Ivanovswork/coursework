@@ -496,3 +496,36 @@ class FavoriteGTView(APIView):
             return Response({"status": "Genre deleted"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FavoriteAuthorsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        authors = user.favorite_a.all()
+        serializer = GenreSerializer(authors, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        user = request.user
+        print(user)
+        try:
+            author = request.data["author_id"]
+            user.favorite_a.add(Authors.objects.filter(pk=author).first())
+            user.save()
+            return Response({"status": "Author added"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        user = request.user
+        print(user)
+        try:
+            author = request.data["author_id"]
+            user.favorite_a.remove(Authors.objects.filter(pk=author).first())
+            user.save()
+            return Response({"status": "Author deleted"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
