@@ -13,13 +13,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
-from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies, Support_Messages
+from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies, Support_Messages, Comments
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
     PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer, \
-    CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer
+    CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
+    CommentSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -576,3 +577,47 @@ class SupportMessagesView(APIView):
             except:
                 return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+class BookCommentsViewSet(viewsets.ModelViewSet):
+    queryset = Comments.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookCommentsSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(user=request.user)
+            return Response(serializer.validated_data, status=status.HTTP_201_CREATED)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            try:
+                comment = get_object_or_404(self.queryset, pk=pk)
+                if comment.type == "feedback":
+                    serializer = CommentSerializer(comment)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            except Exception:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def list(self, request, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        try:
+            comment = get_object_or_404(self.queryset, pk=pk)
+            if request.user == comment.user or request.user.is_superuser:
+                comment.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)

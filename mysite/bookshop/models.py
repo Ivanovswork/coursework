@@ -341,6 +341,7 @@ class Comments(models.Model):
         null=True,
         on_delete=models.CASCADE
     )
+    text = models.TextField(verbose_name="Текст", blank=False, null=True)
 
     class Meta:
         verbose_name = "Отзыв или жалоба"
@@ -352,7 +353,7 @@ class Comments(models.Model):
 
 class Comments_Authors(models.Model):
     comment = models.OneToOneField(Comments, primary_key=True, on_delete=models.CASCADE, related_name="c_author")
-    parent = models.ForeignKey(
+    author = models.ForeignKey(
         Authors,
         verbose_name="Отзыв на автора",
         related_name="c_author",
@@ -371,7 +372,7 @@ class Comments_Authors(models.Model):
 
 class Comments_Books(models.Model):
     comment = models.OneToOneField(Comments, primary_key=True, on_delete = models.CASCADE, related_name="comment_book")
-    parent = models.ForeignKey(
+    book = models.ForeignKey(
         Books,
         verbose_name="Отзыв на книгу",
         related_name="comment_book",

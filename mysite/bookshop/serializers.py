@@ -1,7 +1,8 @@
 from django.contrib.auth import authenticate
-from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField
+from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField, IntegerField
 from rest_framework.authtoken.models import Token
-from .models import User, Companies, Groups, Genres, Authors, Support_Messages
+from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
+    Comments_Authors
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -312,4 +313,78 @@ class PatchCompanySerializer(ModelSerializer):
 class MessageSerializer(ModelSerializer):
     class Meta:
         model = Support_Messages
+        fields = "__all__"
+
+
+class BookCommentsSerializer(ModelSerializer):
+    book_id = IntegerField()
+
+    class Meta:
+        model = Comments
+        fields = ["rating", "book_id", "text"]
+
+    def validate(self, attrs):
+        rating = attrs.get("rating")
+        book_id = attrs.get("book_id")
+        text = attrs.get("text")
+        print(rating, book_id)
+        if Books.objects.filter(pk=book_id).exists() and rating and text:
+            return attrs
+        raise ValidationError({"status": "Bad request"})
+
+    def save(self, user, **kwargs):
+        book = Books.objects.filter(pk=self.validated_data["book_id"]).first()
+        if Comments_Books.objects.select_related("comment").values("comment__user", "book").filter(comment__user=user, book=book).exists():
+            raise ValidationError({"status": "Bad request"})
+        comment = Comments.objects.create(
+            user=user,
+            rating=self.validated_data["rating"],
+            text=self.validated_data["text"])
+        comment.save()
+        comment_book = Comments_Books.objects.create(comment=comment, book=book)
+        comment_book.save()
+
+        return comment, comment_book
+
+
+class CommentSerializer(ModelSerializer):
+    class Meta:
+        model = Comments
+        fields = "__all__"
+
+
+class AuthorCommentsSerializer(ModelSerializer):
+    author_id = IntegerField()
+
+    class Meta:
+        model = Authors
+        fields = ["rating", "author_id", "text"]
+
+    def validate(self, attrs):
+        rating = attrs.get("rating")
+        author_id = attrs.get("author_id")
+        text = attrs.get("text")
+        print(rating, author_id)
+        if Authors.objects.filter(pk=author_id).exists() and rating and text:
+            return attrs
+        raise ValidationError({"status": "Bad request"})
+
+    def save(self, user, **kwargs):
+        author = Authors.objects.filter(pk=self.validated_data["author_id"]).first()
+        if Comments_Authors.objects.select_related("comment").values("comment__user", "author").filter(comment__user=user, author=author).exists():
+            raise ValidationError({"status": "Bad request"})
+        comment = Comments.objects.create(
+            user=user,
+            rating=self.validated_data["rating"],
+            text=self.validated_data["text"])
+        comment.save()
+        comment_author = Comments_Authors.objects.create(comment=comment, author=author)
+        comment_author.save()
+
+        return comment, comment_author
+
+
+class CommentSerializer(ModelSerializer):
+    class Meta:
+        model = Comments
         fields = "__all__"
