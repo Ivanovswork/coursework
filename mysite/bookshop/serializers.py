@@ -353,6 +353,22 @@ class CommentSerializer(ModelSerializer):
         fields = "__all__"
 
 
+class BooksCommentsSerializer(ModelSerializer):
+    comment = CommentSerializer(read_only=True)
+
+    class Meta:
+        model = Comments_Books
+        fields = ["book", "comment"]
+
+
+class AuthorsCommentsSerializer(ModelSerializer):
+    comment = CommentSerializer(read_only=True)
+
+    class Meta:
+        model = Comments_Authors
+        fields = ["author", "comment"]
+
+
 class AuthorCommentsSerializer(ModelSerializer):
     author_id = IntegerField()
 

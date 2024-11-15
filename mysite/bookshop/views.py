@@ -21,7 +21,7 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     GroupSerializer, PatchGroupSerializer, PostDeleteGroupSerializer, GenreSerializer, PostDeleteGenreSerializer, \
     PatchGenreSerializer, AddGenreToGroupSerializer, DeleteGenreFromGroupSerializer, AuthorSerializer, \
     CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
-    CommentSerializer, AuthorCommentsSerializer
+    CommentSerializer, AuthorCommentsSerializer, BooksCommentsSerializer, AuthorsCommentsSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -630,6 +630,20 @@ class BookCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(methods=['get'], detail=False)
+    def comments_by_book(self, request, *args, **kwargs):
+        try:
+            book = request.data["book"]
+            if Books.objects.filter(pk=book).exists():
+                comments = Comments_Books.objects.filter(book=book)
+                print(comments)
+                serializer = BooksCommentsSerializer(comments, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AuthorCommentsViewSet(viewsets.ModelViewSet):
     queryset = Comments_Authors.objects.all()
@@ -681,5 +695,19 @@ class AuthorCommentsViewSet(viewsets.ModelViewSet):
                 comment.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=False)
+    def comments_by_author(self, request, *args, **kwargs):
+        try:
+            author = request.data["author"]
+            if Authors.objects.filter(pk=author).exists():
+                comments = Comments_Authors.objects.filter(author=author)
+                print(comments)
+                serializer = AuthorsCommentsSerializer(comments, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
