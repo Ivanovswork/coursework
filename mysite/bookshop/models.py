@@ -229,6 +229,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(verbose_name="Аккаунт активирован", default=False)
     is_staff = models.BooleanField(verbose_name="Аккаунт уполномоченного лица", default=False)
     is_superuser = models.BooleanField(verbose_name="Аккаунт администратора", default=False)
+    chat = models.BooleanField(verbose_name="Возможность использовать комментарии", default=True)
     favorite_g = models.ManyToManyField(Genres)
     favorite_a = models.ManyToManyField(Authors)
 

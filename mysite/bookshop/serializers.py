@@ -357,7 +357,7 @@ class AuthorCommentsSerializer(ModelSerializer):
     author_id = IntegerField()
 
     class Meta:
-        model = Authors
+        model = Comments
         fields = ["rating", "author_id", "text"]
 
     def validate(self, attrs):
@@ -384,7 +384,3 @@ class AuthorCommentsSerializer(ModelSerializer):
         return comment, comment_author
 
 
-class CommentSerializer(ModelSerializer):
-    class Meta:
-        model = Comments
-        fields = "__all__"
