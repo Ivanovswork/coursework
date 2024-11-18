@@ -1,13 +1,16 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import AuthorsViewSet, CompaniesViewSet, BookCommentsViewSet, AuthorCommentsViewSet
+from .views import AuthorsViewSet, CompaniesViewSet, BookCommentsViewSet, AuthorCommentsViewSet, \
+    AuthorComplaintsViewSet, BookComplaintsViewSet
 
 router = DefaultRouter()
 router.register(r'author', AuthorsViewSet)
 router.register(r'company', CompaniesViewSet)
 router.register(r'book_comment', BookCommentsViewSet)
 router.register(r'author_comment', AuthorCommentsViewSet)
+router.register(r'author_complaint', AuthorComplaintsViewSet, basename="author_complaint")
+router.register(r'book_complaint', BookComplaintsViewSet, basename="book_complaint")
 
 urlpatterns = [
     # path("upload/", views.upload_file, name="upload"),
