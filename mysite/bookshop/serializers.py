@@ -345,7 +345,7 @@ class BookCommentsSerializer(ModelSerializer):
         comment_book = Comments_Books.objects.create(comment=comment, book=book)
         comment_book.save()
 
-        return comment, comment_book
+        return comment
 
 
 class AuthorCommentsSerializer(ModelSerializer):
@@ -377,7 +377,7 @@ class AuthorCommentsSerializer(ModelSerializer):
         comment_author = Comments_Authors.objects.create(comment=comment, author=author)
         comment_author.save()
 
-        return comment, comment_author
+        return comment
 
 
 class CommentSerializer(ModelSerializer):
@@ -427,7 +427,7 @@ class AuthorComplaintSerializer(ModelSerializer):
         comment_author = Comments_Authors.objects.create(comment=comment, author=author)
         comment_author.save()
 
-        return comment, comment_author
+        return comment
 
 
 class BookComplaintSerializer(ModelSerializer):
@@ -435,7 +435,7 @@ class BookComplaintSerializer(ModelSerializer):
 
     class Meta:
         model = Comments
-        fields = ["book_id", "text"]
+        fields = ["id", "book_id", "text"]
 
     def validate(self, attrs):
         book_id = attrs.get("book_id")
@@ -455,4 +455,40 @@ class BookComplaintSerializer(ModelSerializer):
         comment_book = Comments_Books.objects.create(comment=comment, book=book)
         comment_book.save()
 
-        return comment, comment_book
+        return comment
+
+
+class CommentComplaintSerializer(ModelSerializer):
+    comment_id = IntegerField()
+
+    class Meta:
+        model = Comments
+        fields = ["comment_id", "text"]
+
+    def validate(self, attrs):
+        comment_id = attrs.get("comment_id")
+        text = attrs.get("text")
+        print(comment_id)
+        if (Comments.objects.filter(pk=comment_id).exists() and text
+            and Comments.objects.filter(pk=comment_id).first().type == "feedback"):
+            return attrs
+        raise ValidationError({"status": "Bad request"})
+
+    def save(self, user, **kwargs):
+        parent_comment = Comments.objects.filter(pk=self.validated_data["comment_id"]).first()
+        comment = Comments.objects.create(
+            user=user,
+            text=self.validated_data["text"],
+            type="complaint",
+            parent=parent_comment)
+        comment.save()
+
+        return comment
+
+
+class CommentComplaintPresentationSerializer(ModelSerializer):
+    parent = CommentSerializer(read_only=True)
+
+    class Meta:
+        model = Comments
+        fields = "__all__"
