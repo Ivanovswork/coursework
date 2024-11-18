@@ -160,7 +160,7 @@ class Books(models.Model):
         null=True
     )
     genres = models.ManyToManyField(Genres)
-    authors = models.ManyToManyField(Authors)
+    authors = models.ManyToManyField(Authors, through='AuthorBook')
     reason = models.TextField(verbose_name="Причина отказа", blank=True, null=True)
 
     class Meta:
@@ -169,6 +169,17 @@ class Books(models.Model):
 
     def __str__(self):
         return f"{self.name} {self.pk}"
+
+
+class AuthorBook(models.Model):
+    author = models.ForeignKey(Authors, on_delete=models.CASCADE)
+    book = models.ForeignKey(Books, on_delete=models.CASCADE)
+    priority = models.DecimalField(
+        max_digits=2,
+        decimal_places=0,
+        default=0.00,
+        null=True
+    )
 
 
 class UserManager(BaseUserManager):
