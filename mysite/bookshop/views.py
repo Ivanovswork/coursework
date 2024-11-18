@@ -644,6 +644,24 @@ class BookCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(methods=['get'], detail=False)
+    def comments_book_by_user(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            try:
+                user = request.data["user"]
+                if User.objects.filter(id=user).exists():
+                    comments = Comments_Books.objects.select_related("comment").filter(comment__user=user)
+                    print(comments)
+                    serializer = BooksCommentsSerializer(comments, many=True)
+                    print(serializer.data)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            except:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 class AuthorCommentsViewSet(viewsets.ModelViewSet):
     queryset = Comments_Authors.objects.all()
@@ -710,4 +728,33 @@ class AuthorCommentsViewSet(viewsets.ModelViewSet):
             else:
                 return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
         except:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=False)
+    def comments_author_by_user(self, request, *args, **kwargs):
+        # if request.user.is_superuser:
+        #     try:
+        #         user = request.data["user"]
+        #         if User.objects.filter(id=user).exists():
+        #             comments = Comments_Authors.objects.select_related("comment").filter(comment__user=user)
+        #             print(comments)
+        #             serializer = AuthorsCommentsSerializer(comments, many=True)
+        #             print(serializer.data)
+        #             return Response(serializer.data, status=status.HTTP_200_OK)
+        #         else:
+        #             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        #     except:
+        #         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        # else:
+        #     return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        user = request.data["user"]
+        print(user)
+        if User.objects.filter(id=user).exists():
+            comments = Comments_Authors.objects.select_related("comment").filter(comment__user=user)
+            print(comments)
+            serializer = AuthorsCommentsSerializer(comments, many=True)
+            print(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
