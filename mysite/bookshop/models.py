@@ -321,7 +321,7 @@ class Relations_books(models.Model):
     )
     is_favorite = models.BooleanField(verbose_name="Является избранной", default=False)
     type = models.CharField(verbose_name="Тип", choices=REL_TYPE_CHOICES, default="basket")
-    status = models.CharField(verbose_name="Статус", choices=REL_STATUS_CHOICES, default="not_selected")
+    # status = models.CharField(verbose_name="Статус", choices=REL_STATUS_CHOICES, default="not_selected")
 
     class Meta:
         verbose_name = "Связь с книгой"

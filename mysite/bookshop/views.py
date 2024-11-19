@@ -224,8 +224,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
 class GroupView(APIView):
     def get_permissions(self):
         if self.request.method == "GET":
@@ -674,10 +672,10 @@ class BookCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def comments_by_book(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def comments_by_book(self, request, pk=None, *args, **kwargs):
         try:
-            book = request.data["book"]
+            book = pk
             if Books.objects.filter(pk=book).exists():
                 comments = Comments_Books.objects.select_related("comment").filter(book=book,
                                                                                    comment__type="feedback")
@@ -689,11 +687,11 @@ class BookCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def comments_book_by_user(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def comments_book_by_user(self, request, pk=True, *args, **kwargs):
         if request.user.is_superuser:
             try:
-                user = request.data["user"]
+                user = pk
                 if User.objects.filter(id=user).exists():
                     comments = Comments_Books.objects.select_related("comment").filter(comment__user=user,
                                                                                        comment__type="feedback")
@@ -762,10 +760,10 @@ class AuthorCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def comments_by_author(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def comments_by_author(self, request, pk=True, *args, **kwargs):
         try:
-            author = request.data["author"]
+            author = pk
             if Authors.objects.filter(pk=author).exists():
                 comments = Comments_Authors.objects.select_related("comment").filter(author=author,
                                                                                      comment__type="feedback")
@@ -777,11 +775,11 @@ class AuthorCommentsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def comments_author_by_user(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def comments_author_by_user(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             try:
-                user = request.data["user"]
+                user = pk
                 if User.objects.filter(id=user).exists():
                     comments = Comments_Authors.objects.select_related("comment").filter(comment__user=user,
                                                                                          comment__type="feedback")
@@ -850,10 +848,10 @@ class AuthorComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def complaints_by_author(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def complaints_by_author(self, request, pk=None, *args, **kwargs):
         try:
-            author = request.data["author"]
+            author = pk
             if Authors.objects.filter(pk=author).exists():
                 comments = Comments_Authors.objects.select_related("comment").filter(author=author,
                                                                                      comment__type="complaint")
@@ -865,11 +863,11 @@ class AuthorComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def complaints_author_by_user(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def complaints_author_by_user(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             try:
-                user = request.data["user"]
+                user = pk
                 if User.objects.filter(id=user).exists():
                     comments = Comments_Authors.objects.select_related("comment").filter(comment__user=user,
                                                                                          comment__type="complaint")
@@ -939,9 +937,9 @@ class BookComplaintsViewSet(viewsets.ModelViewSet):
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['get'], detail=False)
-    def complaints_by_book(self, request, *args, **kwargs):
+    def complaints_by_book(self, request, pk=None, *args, **kwargs):
         try:
-            book = request.data["book"]
+            book = pk
             if Books.objects.filter(pk=book).exists():
                 comments = Comments_Books.objects.select_related("comment").filter(book=book,
                                                                                    comment__type="complaint")
@@ -953,11 +951,11 @@ class BookComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def complaints_book_by_user(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def complaints_book_by_user(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             try:
-                user = request.data["user"]
+                user = pk
                 if User.objects.filter(id=user).exists():
                     comments = Comments_Books.objects.select_related("comment").filter(comment__user=user,
                                                                                        comment__type="complaint")
@@ -1025,10 +1023,10 @@ class CommentComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def complaints_by_comment(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def complaints_by_comment(self, request, pk=None, *args, **kwargs):
         try:
-            comment_id = request.data["comment_id"]
+            comment_id = pk
             if Comments.objects.filter(pk=comment_id).exists():
                 comments = Comments.objects.filter(parent=comment_id, type="complaint")
                 # print(comments)
@@ -1039,11 +1037,11 @@ class CommentComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
-    def complaints_comment_by_user(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=True)
+    def complaints_comment_by_user(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             try:
-                user = request.data["user"]
+                user = pk
                 if User.objects.filter(id=user).exists():
                     comments = Comments.objects.filter(user=user, type="complaint")
                     # print(comments)
