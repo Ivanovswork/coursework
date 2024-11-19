@@ -111,6 +111,12 @@ class UserDeleteStaffStatusSerializer(ModelSerializer):
         return user
 
 
+class UserSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "name", "company", "is_superuser", "is_staff", "is_active", "chat"]
+
+
 class PostDeleteGroupSerializer(ModelSerializer):
     class Meta:
         model = Groups

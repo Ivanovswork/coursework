@@ -23,7 +23,7 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
     CommentSerializer, AuthorCommentsSerializer, BooksCommentsSerializer, AuthorsCommentsSerializer, \
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
-    CommentComplaintPresentationSerializer
+    CommentComplaintPresentationSerializer, UserSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -184,6 +184,46 @@ def delete_staff_status(request):
         user.save()
         return Response({"status": "Now user is not staff"}, status=status.HTTP_200_OK)
     return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsSuperuser]
+
+    def create(self, request, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, pk=None, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def partial_update(self, request, pk=None, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['patch'], detail=True)
+    def block(self, request, pk=None, *args, **kwargs):
+        try:
+            user = self.queryset.filter(pk=pk).first()
+            user.chat = False
+            user.save()
+            return Response(self.get_serializer(user).data, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch'], detail=True)
+    def unblock(self, request, pk=None, *args, **kwargs):
+        try:
+            user = self.queryset.filter(pk=pk).first()
+            user.chat = True
+            user.save()
+            return Response(self.get_serializer(user).data, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 class GroupView(APIView):
