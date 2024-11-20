@@ -23,7 +23,7 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
     CommentSerializer, AuthorCommentsSerializer, BooksCommentsSerializer, AuthorsCommentsSerializer, \
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
-    CommentComplaintPresentationSerializer, UserSerializer
+    CommentComplaintPresentationSerializer, UserSerializer, BookSerializer
 
 from .serializers import UserRGSTRSerializer
 
@@ -388,7 +388,7 @@ class AuthorsViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         if request.user:
             if request.user.is_superuser:
-                query = self.queryset
+                query = self.queryset.all()
                 serializer = self.get_serializer(query, many=True)
                 return Response(serializer.data, status=status.HTTP_200_OK)
         query = self.queryset.filter(status="active")
@@ -1054,3 +1054,17 @@ class CommentComplaintsViewSet(viewsets.ModelViewSet):
                 return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class BookViewSet(viewsets.ModelViewSet):
+    queryset = Books.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        # print(request.data)
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+
+            print(serializer.save())
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

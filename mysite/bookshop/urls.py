@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import AuthorsViewSet, CompaniesViewSet, BookCommentsViewSet, AuthorCommentsViewSet, \
-    AuthorComplaintsViewSet, BookComplaintsViewSet, CommentComplaintsViewSet, UserViewSet
+    AuthorComplaintsViewSet, BookComplaintsViewSet, CommentComplaintsViewSet, UserViewSet, BookViewSet
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 router = DefaultRouter()
 router.register(r'author', AuthorsViewSet)
@@ -13,6 +14,7 @@ router.register(r'author_complaint', AuthorComplaintsViewSet, basename="author_c
 router.register(r'book_complaint', BookComplaintsViewSet, basename="book_complaint")
 router.register(r'comment_complaint', CommentComplaintsViewSet, basename="comment_complaint")
 router.register(r'user', UserViewSet)
+router.register(r'book', BookViewSet)
 
 urlpatterns = [
     # path("upload/", views.upload_file, name="upload"),
@@ -33,4 +35,7 @@ urlpatterns = [
     path("favorite_authors/", views.FavoriteAuthorsView.as_view(), name="favorite_authors"),
     path("support_message/", views.SupportMessagesView.as_view(), name="support_message"),
     path('', include(router.urls)),
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]

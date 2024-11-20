@@ -1,8 +1,8 @@
 from django.contrib.auth import authenticate
-from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField, IntegerField
+from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField
 from rest_framework.authtoken.models import Token
 from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
-    Comments_Authors
+    Comments_Authors, AuthorBook
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -498,3 +498,94 @@ class CommentComplaintPresentationSerializer(ModelSerializer):
     class Meta:
         model = Comments
         fields = "__all__"
+
+
+class AuthorRequestSerializer(ModelSerializer):
+    priority = IntegerField()
+
+    class Meta:
+        model = Authors
+        fields = "__all__"
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        print(name)
+        if name is None:
+            raise ValidationError({"status": "Bad request"})
+        return attrs
+
+
+class BookSerializer(ModelSerializer):
+    authors_set = JSONField()
+
+    class Meta:
+        model = Books
+        fields = "__all__"
+
+    def validate(self, attrs):
+        name = attrs.get("name")
+        publication_date = attrs.get("publication_date")
+        content = attrs.get("content")
+        price = attrs.get("price")
+        age_limit = attrs.get("age_limit")
+        isbn = attrs.get("isbn")
+        bbk = attrs.get("bbk")
+        udk = attrs.get("udk")
+        author_mark = attrs.get("author_mark")
+        language = attrs.get("language")
+        priority = attrs.get("priority")
+        genres = attrs.get("genres")
+        authors = attrs.get("authors_set")
+        print(genres)
+        print(authors)
+
+        if (name and publication_date and content and price and age_limit and isbn and bbk and udk and author_mark and
+                language and priority and genres and authors):
+            try:
+                for author in authors["authors"]:
+                    if not (Authors.objects.filter(pk=author["id"]).exists() and author["priority"]):
+                        raise ValidationError()
+            except Exception:
+                raise ValidationError()
+
+            if authors["new_authors"]:
+                for new_author in authors["new_authors"]:
+                    print(new_author)
+                    serializer = AuthorRequestSerializer(data=new_author)
+                    if not serializer.is_valid():
+                        raise ValidationError()
+            return attrs
+        else:
+            raise ValidationError()
+
+    def save(self, **kwargs):
+        book = Books.objects.create(name=self.validated_data["name"],
+                                    publication_date=self.validated_data["publication_date"],
+                                    content=self.validated_data["content"],
+                                    price=self.validated_data["price"],
+                                    age_limit=self.validated_data["age_limit"],
+                                    isbn=self.validated_data["isbn"],
+                                    bbk=self.validated_data["bbk"],
+                                    udk=self.validated_data["udk"],
+                                    author_mark=self.validated_data["author_mark"],
+                                    language=self.validated_data["language"],
+                                    priority=self.validated_data["priority"],)
+        # book.save()
+        for genre in self.validated_data["genres"]:
+            book.genres.add(genre)
+        for author in self.validated_data["authors_set"]["authors"]:
+            a_b = AuthorBook.objects.create(book=book, author=Authors.objects.filter(pk=author["id"]).first(),
+                                            priority=author["priority"])
+            a_b.save()
+        for author in self.validated_data["authors_set"]["new_authors"]:
+            priority = author.pop("priority")
+
+            serializer = AuthorSerializer(data=author)
+            serializer.is_valid(raise_exception=True)
+            a_b = AuthorBook.objects.create(book=book, author=serializer.save(), priority=priority)
+            a_b.save()
+        book.save()
+        return book
+
+
+

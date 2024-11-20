@@ -144,9 +144,9 @@ class Books(models.Model):
         choices=AGE_CHOICES,
         blank=False,
         default="zero")
-    isbn = models.CharField(verbose_name="ISBN", blank=False, null=True)
-    bbk = models.CharField(verbose_name="ББК", blank=False, null=True)
-    udk = models.CharField(verbose_name="УДК", blank=False, null=True)
+    isbn = models.CharField(verbose_name="ISBN", blank=False, null=True, unique=True)
+    bbk = models.CharField(verbose_name="ББК", blank=False, null=True, unique=True)
+    udk = models.CharField(verbose_name="УДК", blank=False, null=True, unique=True)
     author_mark = models.CharField(verbose_name="Авторский знак", blank=False, null=True)
     language = models.CharField(verbose_name="Язык", blank=False, null=True)
     priority = models.DecimalField(
