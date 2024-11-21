@@ -1,11 +1,10 @@
 import ast
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import action
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
@@ -23,9 +22,27 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
     CommentSerializer, AuthorCommentsSerializer, BooksCommentsSerializer, AuthorsCommentsSerializer, \
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
-    CommentComplaintPresentationSerializer, UserSerializer, BookSerializer
+    CommentComplaintPresentationSerializer, UserSerializer, BookSerializer, GetBookSerializer, PatchBookSerializer
 
 from .serializers import UserRGSTRSerializer
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+# import threading
+# import datetime
+#
+# def my_function():
+#     print(f"Функция выполнена в {datetime.datetime.now()}")
+#     # Запускаем таймер снова
+#     start_timer()
+#
+# def start_timer():
+#     # Устанавливаем интервал в 60 секунд
+#     interval = 60
+#     timer = threading.Timer(interval, my_function)
+#     timer.start()
+#
+# # Запускаем таймер при старте приложения
+# start_timer()
 
 
 # @api_view(['POST'])
@@ -239,7 +256,6 @@ class GroupView(APIView):
         # for i in range(len(serializer)):
         #     response[serializer[i]["id"]] = serializer[i]["name"]
         return Response(serializer, status=status.HTTP_200_OK)
-
 
     def post(self, request):
         group = PostDeleteGroupSerializer(data=request.data)
@@ -1058,13 +1074,116 @@ class CommentComplaintsViewSet(viewsets.ModelViewSet):
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Books.objects.all()
+    serializer_class = GetBookSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "retrieve", "company_requests", "requests"]:
+            return [IsAuthenticated(), IsStaff()]
+        elif self.action in ["partial_update"]:
+            return [IsAuthenticated(), IsSuperuser()]
+        else:
+            return [AllowAny()]
 
     def create(self, request, *args, **kwargs):
-        # print(request.data)
+        user = request.user
+        print(user.is_superuser)
         serializer = BookSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
+            if user.is_superuser:
+                try:
+                    serializer = GetBookSerializer(serializer.save(company_id=request.data["company_id"]))
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                except Exception:
+                    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                serializer = GetBookSerializer(serializer.save(user=user))
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-            print(serializer.save())
-            return Response(status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, pk=None, *args, **kwargs):
+        book = get_object_or_404(self.queryset, pk=pk)
+
+        user = request.user
+
+        if user.is_superuser or (user.is_staff and user.company == book.company):
+            serializer = GetBookSerializer(book)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif book.status not in ["request", "blocked", "rejected"]:
+            serializer = GetBookSerializer(book)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def list(self, request, *args, **kwargs):
+        page = request.GET.get("page")
+        books = Books.objects.filter(status__in=["released", "coming soon"]).order_by("priority")
+
+        book_paginator = Paginator(books, 4)
+
+        result = []
+        try:
+            page_book = book_paginator.page(page)
+        except PageNotAnInteger:
+            page_book = book_paginator.page(1)
+        except EmptyPage:
+            page_book = book_paginator.page(book_paginator.num_pages)
+
+        for elem in page_book.object_list.values():
+            result.append(GetBookSerializer(Books.objects.filter(pk=elem["id"]).first()).data)
+
+        return JsonResponse({
+            'objects': result,
+            'current_page': page_book.number,
+            'total_pages': book_paginator.num_pages,
+            'has_next': page_book.has_next(),
+            'has_previous': page_book.has_previous(),
+        },
+            json_dumps_params={'ensure_ascii': False})
+
+    def partial_update(self, request, pk=None, *args, **kwargs):
+        book = get_object_or_404(self.queryset, pk=pk)
+        serializer = PatchBookSerializer(book, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer = GetBookSerializer(serializer.save())
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, pk=None, *args, **kwargs):
+        Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, pk=None, *args, **kwargs):
+        Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['get'], detail=False)
+    def requests(self, request):
+        user = request.user
+
+        if user.is_superuser:
+            books = Books.objects.filter(status="request")
+            serializer = GetBookSerializer(books, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif user.is_staff:
+            books = Books.objects.filter(status="request", company=user.company)
+            serializer = GetBookSerializer(books, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['get'], detail=True)
+    def company_requests(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Companies.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+            company = Companies.objects.filter(pk=pk).first()
+            books = Books.objects.filter(status="request", company=company)
+            serializer = GetBookSerializer(books, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+
+

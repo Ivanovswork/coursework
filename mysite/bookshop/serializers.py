@@ -3,6 +3,8 @@ from rest_framework.serializers import ModelSerializer, CharField, ValidationErr
 from rest_framework.authtoken.models import Token
 from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
     Comments_Authors, AuthorBook
+from rest_framework.response import Response
+from rest_framework import status
 
 
 class UserRGSTRSerializer(ModelSerializer):
@@ -558,19 +560,38 @@ class BookSerializer(ModelSerializer):
         else:
             raise ValidationError()
 
-    def save(self, **kwargs):
-        book = Books.objects.create(name=self.validated_data["name"],
-                                    publication_date=self.validated_data["publication_date"],
-                                    content=self.validated_data["content"],
-                                    price=self.validated_data["price"],
-                                    age_limit=self.validated_data["age_limit"],
-                                    isbn=self.validated_data["isbn"],
-                                    bbk=self.validated_data["bbk"],
-                                    udk=self.validated_data["udk"],
-                                    author_mark=self.validated_data["author_mark"],
-                                    language=self.validated_data["language"],
-                                    priority=self.validated_data["priority"],)
+    def save(self, company_id=None, user=None, **kwargs):
+        if company_id:
+            if Companies.objects.filter(pk=company_id).exists():
+                book = Books.objects.create(name=self.validated_data["name"],
+                                            publication_date=self.validated_data["publication_date"],
+                                            content=self.validated_data["content"],
+                                            price=self.validated_data["price"],
+                                            age_limit=self.validated_data["age_limit"],
+                                            isbn=self.validated_data["isbn"],
+                                            bbk=self.validated_data["bbk"],
+                                            udk=self.validated_data["udk"],
+                                            author_mark=self.validated_data["author_mark"],
+                                            language=self.validated_data["language"],
+                                            priority=self.validated_data["priority"],
+                                            company=Companies.objects.filter(pk=company_id).first())
+            else:
+                raise ValidationError()
+        else:
+            book = Books.objects.create(name=self.validated_data["name"],
+                                        publication_date=self.validated_data["publication_date"],
+                                        content=self.validated_data["content"],
+                                        price=self.validated_data["price"],
+                                        age_limit=self.validated_data["age_limit"],
+                                        isbn=self.validated_data["isbn"],
+                                        bbk=self.validated_data["bbk"],
+                                        udk=self.validated_data["udk"],
+                                        author_mark=self.validated_data["author_mark"],
+                                        language=self.validated_data["language"],
+                                        priority=self.validated_data["priority"],
+                                        company=user.company)
         # book.save()
+
         for genre in self.validated_data["genres"]:
             book.genres.add(genre)
         for author in self.validated_data["authors_set"]["authors"]:
@@ -588,4 +609,35 @@ class BookSerializer(ModelSerializer):
         return book
 
 
+class GetBookSerializer(ModelSerializer):
+    authors = AuthorSerializer(many=True, read_only=True)
+    genres = GenreSerializer(many=True, read_only=True)
+    company = CompaniesSerializer(many=False, read_only=True)
 
+    class Meta:
+        model = Books
+        fields = ["id", "name", "publication_date", "company", "content", "price", "age_limit", "isbn", "bbk", "udk",
+                  "author_mark", "language", "priority", "genres", "authors", "reason", "status"]
+
+
+class PatchBookSerializer(ModelSerializer):
+    class Meta:
+        model = Books
+        fields = ["id", "name", "publication_date", "content", "price", "age_limit", "isbn", "bbk", "udk",
+                  "author_mark", "language", "priority", "reason"]
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.publication_date = validated_data.get('publication_date', instance.publication_date)
+        instance.content = validated_data.get('content', instance.content)
+        instance.age_limit = validated_data.get('age_limit', instance.age_limit)
+        instance.price = validated_data.get('price', instance.price)
+        instance.isbn = validated_data.get('isbn', instance.isbn)
+        instance.bbk = validated_data.get('bbk', instance.bbk)
+        instance.udk = validated_data.get('udk', instance.udk)
+        instance.author_mark = validated_data.get('author_mark', instance.author_mark)
+        instance.language = validated_data.get('language', instance.language)
+        instance.priority = validated_data.get('priority', instance.priority)
+        instance.reason = validated_data.get('reason', instance.reason)
+        instance.save()
+        return instance
