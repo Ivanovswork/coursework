@@ -22,7 +22,8 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     CompaniesSerializer, PatchAuthorSerializer, PatchCompanySerializer, MessageSerializer, BookCommentsSerializer, \
     CommentSerializer, AuthorCommentsSerializer, BooksCommentsSerializer, AuthorsCommentsSerializer, \
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
-    CommentComplaintPresentationSerializer, UserSerializer, BookSerializer, GetBookSerializer, PatchBookSerializer
+    CommentComplaintPresentationSerializer, UserSerializer, BookSerializer, GetBookSerializer, PatchBookSerializer, \
+    AddBookAuthorSerializer, DeleteBookAuthorSerializer, DeleteBookGenreSerializer, AddBookGenreSerializer
 
 from .serializers import UserRGSTRSerializer
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -1324,5 +1325,50 @@ class BookViewSet(viewsets.ModelViewSet):
         except Exception:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
         if book and user and user.is_superuser:
-            serializer =
+            serializer = AddBookAuthorSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer = serializer.save(book=book)
+            return Response(GetBookSerializer(serializer).data, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(methods=['patch'], detail=True)
+    def delete_author(self, request, pk=None):
+        user = request.user
+        try:
+            book = Books.objects.filter(pk=pk).first()
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        if book and user and user.is_superuser:
+            serializer = DeleteBookAuthorSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer = serializer.save(book=book)
+            return Response(GetBookSerializer(serializer).data, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch'], detail=True)
+    def add_genre(self, request, pk=None):
+        user = request.user
+        try:
+            book = Books.objects.filter(pk=pk).first()
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        if book and user and user.is_superuser:
+            serializer = AddBookGenreSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer = serializer.save(book=book)
+            return Response(GetBookSerializer(serializer).data, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch'], detail=True)
+    def delete_genre(self, request, pk=None):
+        user = request.user
+        try:
+            book = Books.objects.filter(pk=pk).first()
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        if book and user and user.is_superuser:
+            serializer = DeleteBookGenreSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer = serializer.save(book=book)
+            return Response(GetBookSerializer(serializer).data, status=status.HTTP_200_OK)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)

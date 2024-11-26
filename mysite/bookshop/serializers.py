@@ -649,11 +649,12 @@ class PatchBookSerializer(ModelSerializer):
         return instance
 
 
-class AddDeleteBookAuthorSerializer(ModelSerializer):
+class AddBookAuthorSerializer(ModelSerializer):
     author_id = IntegerField()
 
     class Meta:
         model = Books
+        fields = ["author_id"]
 
     def validate(self, attrs):
         author_id = attrs.get("author_id")
@@ -663,13 +664,93 @@ class AddDeleteBookAuthorSerializer(ModelSerializer):
         if not Authors.objects.filter(pk=author_id).exists():
             raise ValidationError()
 
-        if Authors.objects.filter(pk=author_id).first().status == "blocked":
+        if Authors.objects.filter(pk=author_id).first().status in ["blocked", "rejected"]:
             raise ValidationError()
 
-    def save(self, user, book_id, **kwargs):
-        author = Authors.objects.filter(pk=self.validated_data["author_id"]).first()
-        book = Books.objects.filter(pk=book_id).first()
+        return attrs
 
+    def save(self, book, **kwargs):
+        author = Authors.objects.filter(pk=self.validated_data["author_id"]).first()
+        if author in book.authors.all():
+            raise ValidationError()
         book.authors.add(author)
+        book.save()
+        return book
+
+
+class DeleteBookAuthorSerializer(ModelSerializer):
+    author_id = IntegerField()
+
+    class Meta:
+        model = Books
+        fields = ["author_id"]
+
+    def validate(self, attrs):
+        author_id = attrs.get("author_id")
+        if not author_id:
+            raise ValidationError()
+
+        if not Authors.objects.filter(pk=author_id).exists():
+            raise ValidationError()
+
+        return attrs
+
+    def save(self, book, **kwargs):
+        author = Authors.objects.filter(pk=self.validated_data["author_id"]).first()
+        if not author in book.authors.all():
+            raise ValidationError()
+        book.authors.remove(author)
+        book.save()
+        return book
+
+
+class AddBookGenreSerializer(ModelSerializer):
+    genre_id = IntegerField()
+
+    class Meta:
+        model = Books
+        fields = ["genre_id"]
+
+    def validate(self, attrs):
+        genre_id = attrs.get("genre_id")
+        if not genre_id:
+            raise ValidationError()
+
+        if not Genres.objects.filter(pk=genre_id).exists():
+            raise ValidationError()
+
+        return attrs
+
+    def save(self, book, **kwargs):
+        genre = Genres.objects.filter(pk=self.validated_data["genre_id"]).first()
+        if genre in book.genres.all():
+            raise ValidationError()
+        book.genres.add(genre)
+        book.save()
+        return book
+
+
+class DeleteBookGenreSerializer(ModelSerializer):
+    genre_id = IntegerField()
+
+    class Meta:
+        model = Books
+        fields = ["genre_id"]
+
+    def validate(self, attrs):
+        genre_id = attrs.get("genre_id")
+        if not genre_id:
+            raise ValidationError()
+
+        if not Genres.objects.filter(pk=genre_id).exists():
+            raise ValidationError()
+
+        return attrs
+
+    def save(self, book, **kwargs):
+        genre = Genres.objects.filter(pk=self.validated_data["genre_id"]).first()
+        if not genre in book.genres.all():
+            raise ValidationError()
+        book.genres.remove(genre)
         book.save()
         return book
