@@ -153,8 +153,11 @@ class PatchGroupSerializer(ModelSerializer):
 
     def validate(self, attrs):
         name = attrs.get("name")
+        new_name = attrs.get("new_name")
         if not Groups.objects.filter(name=name).exists():
-            raise ValidationError({"name": "Группы с таким name не существует"})
+            raise ValidationError()
+        if Groups.objects.filter(name=new_name).exists():
+            raise ValidationError()
 
         return attrs
 
@@ -200,8 +203,11 @@ class PatchGenreSerializer(ModelSerializer):
 
     def validate(self, attrs):
         name = attrs.get("name")
+        new_name = attrs.get("new_name")
         if not Genres.objects.filter(name=name).exists():
-            raise ValidationError({"name": "Жанра с таким name не существует"})
+            raise ValidationError()
+        if Genres.objects.filter(name=new_name).exists():
+            raise ValidationError()
 
         return attrs
 

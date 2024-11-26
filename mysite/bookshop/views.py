@@ -1,7 +1,7 @@
 import ast
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -30,10 +30,12 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 # import threading
 # import datetime
 #
+#
 # def my_function():
 #     print(f"Функция выполнена в {datetime.datetime.now()}")
 #     # Запускаем таймер снова
 #     start_timer()
+#
 #
 # def start_timer():
 #     # Устанавливаем интервал в 60 секунд
@@ -41,36 +43,10 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 #     timer = threading.Timer(interval, my_function)
 #     timer.start()
 #
+#
 # # Запускаем таймер при старте приложения
 # start_timer()
 
-
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated, IsStaff])
-# def upload_file(request):
-#     if request.method == 'POST' and is_staff_this_company(request):
-#         # file = request.FILES['file']
-#         # file_str = file.read()
-#         # file_model = Books.objects.create(file=file_str)
-#         return HttpResponse('File saved to database')
-#
-#     return HttpResponse('Invalid request method')
-#
-#
-# @csrf_exempt
-# @api_view(['GET'])
-# def download_file(request, id):
-#     file_model = Books.objects.filter(pk=id).first()
-#     print(file_model.pk)
-#     if file_model:
-#         file_data = file_model.file
-#         response = HttpResponse(
-#             ast.literal_eval(file_data),
-#             content_type="application/pdf")
-#         response['Content-Disposition'] = 'attachment; filename="file.pdf"'
-#         return response
-#     else:
-#         return HttpResponse('No file found in database')
 
 def is_owner(request):
     try:
@@ -156,7 +132,7 @@ def login(request, *args, **kwargs):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request, *args, **kwargs):
-    if request.method == "POST" and is_owner(request):
+    if request.method == "POST":
         try:
             request.user.auth_token.delete()
             return Response(
@@ -164,6 +140,7 @@ def logout(request, *args, **kwargs):
             )
         except Exception as e:
             return Response({"status": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['PUT'])
@@ -267,7 +244,7 @@ class GroupView(APIView):
     def patch(self, request):
         group = PatchGroupSerializer(data=request.data)
 
-        if group.is_valid():
+        if group.is_valid(raise_exception=True):
             group.save()
             return Response(group.data, status=status.HTTP_200_OK)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
@@ -309,7 +286,7 @@ class GenresView(APIView):
     def patch(self, request):
         genre = PatchGenreSerializer(data=request.data)
 
-        if genre.is_valid():
+        if genre.is_valid(raise_exception=True):
             genre.save()
             return Response(genre.data, status=status.HTTP_200_OK)
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
@@ -391,13 +368,15 @@ class AuthorsViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, pk=None, **kwargs):
         author = get_object_or_404(self.queryset, pk=pk)
-        if author.status == "request" and request.user:
+        if author.status != "active" and request.user:
             if request.user.is_superuser:
                 serializer = self.get_serializer(author)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
                 return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
         else:
+            if author.status in ["rejected", "blocked", "request"]:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
             serializer = self.get_serializer(author)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -433,11 +412,24 @@ class AuthorsViewSet(viewsets.ModelViewSet):
     def block(self, request, pk=None, *args, **kwargs):
         if request.user.is_superuser:
             author = get_object_or_404(self.queryset, pk=pk)
+            if author.status != "active":
+                return Response({"status": "Author status is not active"}, status=status.HTTP_403_FORBIDDEN)
             author.status = "blocked"
             author.save()
-            """
-            код, который блокирует все книги заблокированного автора или убирает автора из авторов книги
-            """
+
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(detail=True, methods=['patch'])
+    def unblock(self, request, pk=None, *args, **kwargs):
+        if request.user.is_superuser:
+            author = get_object_or_404(self.queryset, pk=pk)
+            if author.status != "blocked":
+                return Response({"status": "Author status is not request"}, status=status.HTTP_403_FORBIDDEN)
+            author.status = "active"
+            author.save()
+
             return Response(status=status.HTTP_200_OK)
         else:
             return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
@@ -498,7 +490,7 @@ class CompaniesViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         if request.user.is_superuser:
-            query = self.queryset
+            query = self.queryset.all()
             serializer = self.get_serializer(query, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
@@ -952,7 +944,7 @@ class BookComplaintsViewSet(viewsets.ModelViewSet):
         except:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['get'], detail=True)
     def complaints_by_book(self, request, pk=None, *args, **kwargs):
         try:
             book = pk
@@ -1184,6 +1176,139 @@ class BookViewSet(viewsets.ModelViewSet):
         else:
             return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(methods=['get'], detail=True)
+    def company_books(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Companies.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+            company = Companies.objects.filter(pk=pk).first()
+            books = Books.objects.filter(company=company)
+            serializer = GetBookSerializer(books, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif user.is_staff:
+            if not Companies.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            company = Companies.objects.filter(pk=pk).first()
+            if user.company == company:
+                books = Books.objects.filter(company=company)
+                serializer = GetBookSerializer(books, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(methods=['patch'], detail=True)
+    def accept_book(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Books.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            book = Books.objects.filter(pk=pk).first()
+            if book.status in ["released", "coming soon", "blocked", "rejected"]:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            if book.file:
+                book.status = "released"
+            else:
+                book.status = "coming soon"
+            authors = book.authors.all()
+            print(authors)
+            for author in authors:
+                author.status = "active"
+                author.save()
+            print(authors)
+            book.save()
+            return Response(GetBookSerializer(book).data, status=status.HTTP_200_OK)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    @action(methods=['patch'], detail=True)
+    def reject_book(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Books.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            book = Books.objects.filter(pk=pk).first()
+            if book.status in ["released", "coming soon", "blocked", "rejected"]:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                reason = request.data["reason"]
+                book.reason = reason
+                book.status = "rejected"
+                book.save()
+            except Exception:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(GetBookSerializer(book).data, status=status.HTTP_200_OK)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['patch'], detail=True)
+    def block_book(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Books.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            book = Books.objects.filter(pk=pk).first()
+            if book.status in ["rejected", "blocked", "request"]:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                reason = request.data["reason"]
+                book.reason = reason
+                book.status = "blocked"
+                book.save()
+            except Exception:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(GetBookSerializer(book).data, status=status.HTTP_200_OK)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['patch'], detail=True)
+    def unblock_book(self, request, pk=None):
+        user = request.user
+        if user.is_superuser:
+            if not Books.objects.filter(pk=pk).exists():
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            book = Books.objects.filter(pk=pk).first()
+            if book.status in ["released", "coming soon", "rejected", "request"]:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+            if book.file:
+                book.status = "released"
+            else:
+                book.status = "coming soon"
+            book.reason = None
+            book.save()
+            return Response(GetBookSerializer(book).data, status=status.HTTP_200_OK)
+        return Response({"status": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(methods=['patch'], detail=True)
+    def upload_file(self, request, pk=None):
+        user = request.user
+        if request.method == 'POST':
+            book = Books.objects.filter(pk=pk).first()
+            if book and book.company == user.company and book.status in ["request", "coming soon"]:
+                print(request.FILES)
+                file = request.FILES['file']
+                file_str = file.read()
+                book.file = file_str
+                if book.status == "coming soon":
+                    book.status = "released"
+                book.save()
+                return Response({"status": "Ok"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        # return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=True)
+    def download_file(self, request, pk=None):
+        file_model = Books.objects.filter(pk=pk).first()
+        print(file_model.pk)
+        if file_model:
+            file_data = file_model.file
+            response = HttpResponse(
+                ast.literal_eval(file_data),
+                content_type="application/pdf")
+            response['Content-Disposition'] = 'attachment; filename="file.pdf"'
+            return response
+        else:
+            return Response('No file found in database')
