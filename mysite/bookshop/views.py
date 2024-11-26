@@ -1283,8 +1283,11 @@ class BookViewSet(viewsets.ModelViewSet):
     @action(methods=['patch'], detail=True)
     def upload_file(self, request, pk=None):
         user = request.user
-        if request.method == 'POST':
-            book = Books.objects.filter(pk=pk).first()
+        if request.method == 'PATCH':
+            try:
+                book = Books.objects.filter(pk=pk).first()
+            except Exception:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
             if book and book.company == user.company and book.status in ["request", "coming soon"]:
                 print(request.FILES)
                 file = request.FILES['file']
@@ -1297,7 +1300,7 @@ class BookViewSet(viewsets.ModelViewSet):
             else:
                 return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-        # return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['get'], detail=True)
     def download_file(self, request, pk=None):
@@ -1312,3 +1315,14 @@ class BookViewSet(viewsets.ModelViewSet):
             return response
         else:
             return Response('No file found in database')
+
+    @action(methods=['patch'], detail=True)
+    def add_author(self, request, pk=None):
+        user = request.user
+        try:
+            book = Books.objects.filter(pk=pk).first()
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        if book and user and user.is_superuser:
+            serializer =
+

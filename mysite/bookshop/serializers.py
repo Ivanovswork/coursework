@@ -647,3 +647,29 @@ class PatchBookSerializer(ModelSerializer):
         instance.reason = validated_data.get('reason', instance.reason)
         instance.save()
         return instance
+
+
+class AddDeleteBookAuthorSerializer(ModelSerializer):
+    author_id = IntegerField()
+
+    class Meta:
+        model = Books
+
+    def validate(self, attrs):
+        author_id = attrs.get("author_id")
+        if not author_id:
+            raise ValidationError()
+
+        if not Authors.objects.filter(pk=author_id).exists():
+            raise ValidationError()
+
+        if Authors.objects.filter(pk=author_id).first().status == "blocked":
+            raise ValidationError()
+
+    def save(self, user, book_id, **kwargs):
+        author = Authors.objects.filter(pk=self.validated_data["author_id"]).first()
+        book = Books.objects.filter(pk=book_id).first()
+
+        book.authors.add(author)
+        book.save()
+        return book
