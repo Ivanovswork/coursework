@@ -243,6 +243,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     chat = models.BooleanField(verbose_name="Возможность использовать комментарии", default=True)
     favorite_g = models.ManyToManyField(Genres)
     favorite_a = models.ManyToManyField(Authors)
+    relations = models.ManyToManyField(Books, through="Relations_books")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -420,3 +421,5 @@ class ConfirmEmailKey(models.Model):
 
     def __str__(self):
         return f"Ключ подтверждения {self.key} пользователя {self.user.email}"
+
+

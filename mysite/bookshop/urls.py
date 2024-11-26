@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import AuthorsViewSet, CompaniesViewSet, BookCommentsViewSet, AuthorCommentsViewSet, \
-    AuthorComplaintsViewSet, BookComplaintsViewSet, CommentComplaintsViewSet, UserViewSet, BookViewSet
+    AuthorComplaintsViewSet, BookComplaintsViewSet, CommentComplaintsViewSet, UserViewSet, BookViewSet, BasketViewSet
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 router = DefaultRouter()
@@ -15,6 +15,7 @@ router.register(r'book_complaint', BookComplaintsViewSet, basename="book_complai
 router.register(r'comment_complaint', CommentComplaintsViewSet, basename="comment_complaint")
 router.register(r'user', UserViewSet)
 router.register(r'book', BookViewSet)
+router.register(r'basket', BasketViewSet)
 
 urlpatterns = [
     # path("upload/", views.upload_file, name="upload"),

@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate
 from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField
 from rest_framework.authtoken.models import Token
 from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
-    Comments_Authors, AuthorBook
+    Comments_Authors, AuthorBook, Relations_books
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -754,3 +754,41 @@ class DeleteBookGenreSerializer(ModelSerializer):
         book.genres.remove(genre)
         book.save()
         return book
+
+
+class BasketPositionSerializer(ModelSerializer):
+    book = GetBookSerializer(read_only=True, many=False)
+    user = UserSerializer(read_only=True, many=False)
+
+    class Meta:
+        model = Relations_books
+        fields = ["user", "book", "type"]
+
+
+class CreateBasketSerializer(ModelSerializer):
+    book_id = IntegerField()
+
+    class Meta:
+        model = Relations_books
+        fields = ["book_id"]
+
+    def validate(self, attrs):
+        book_id = attrs.get("book_id")
+        if not book_id:
+            raise ValidationError()
+
+        if not Books.objects.filter(pk=book_id).exists():
+            raise ValidationError()
+
+        if Books.objects.filter(pk=book_id).first().status in ["blocked", "rejected", "request"]:
+            raise ValidationError()
+
+        return attrs
+
+    def save(self, user, **kwargs):
+        book = Books.objects.filter(pk=self.validated_data["book_id"]).first()
+        if book in user.relations.all():
+            raise ValidationError()
+        rel = Relations_books.objects.create(user=user, book=book)
+
+        return rel
