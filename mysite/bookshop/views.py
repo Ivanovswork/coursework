@@ -24,7 +24,7 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
     CommentComplaintPresentationSerializer, UserSerializer, BookSerializer, GetBookSerializer, PatchBookSerializer, \
     AddBookAuthorSerializer, DeleteBookAuthorSerializer, DeleteBookGenreSerializer, AddBookGenreSerializer, \
-    CreateBasketSerializer, BasketPositionSerializer
+    CreateBasketSerializer, BasketPositionSerializer, DeleteBasketSerializer
 
 from .serializers import UserRGSTRSerializer
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -1387,12 +1387,23 @@ class BasketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
-        pass
+        user = request.user
+        basket = Relations_books.objects.filter(user=user, type="basket")
+        serializer = BasketPositionSerializer(basket, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def destroy(self, request, *args, **kwargs):
-        pass
+    @action(methods=['delete'], detail=False)
+    def del_position(self, request, *args, **kwargs):
+        user = request.user
+        serializer = DeleteBasketSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer = BasketPositionSerializer(serializer.save(user))
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     # @action(methods=['patch'], detail=False)
     # def purchase(self, request, *args, **kwargs):
     #     pass
     #
+
+
+# class Purchases

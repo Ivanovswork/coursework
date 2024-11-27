@@ -758,7 +758,7 @@ class DeleteBookGenreSerializer(ModelSerializer):
 
 class BasketPositionSerializer(ModelSerializer):
     book = GetBookSerializer(read_only=True, many=False)
-    user = UserSerializer(read_only=True, many=False)
+    # user = UserSerializer(read_only=True, many=False)
 
     class Meta:
         model = Relations_books
@@ -792,3 +792,34 @@ class CreateBasketSerializer(ModelSerializer):
         rel = Relations_books.objects.create(user=user, book=book)
 
         return rel
+
+
+class DeleteBasketSerializer(ModelSerializer):
+    book_id = IntegerField()
+
+    class Meta:
+        model = Relations_books
+        fields = ["book_id"]
+
+    def validate(self, attrs):
+        book_id = attrs.get("book_id")
+        if not book_id:
+            raise ValidationError()
+
+        if not Books.objects.filter(pk=book_id).exists():
+            raise ValidationError()
+
+        if Books.objects.filter(pk=book_id).first().status in ["rejected", "request"]:
+            raise ValidationError()
+
+        return attrs
+
+    def save(self, user, **kwargs):
+        book = Books.objects.filter(pk=self.validated_data["book_id"]).first()
+        if book not in user.relations.all():
+            raise ValidationError()
+        rel = Relations_books.objects.filter(user=user, book=book).delete()
+
+        return rel
+
+
