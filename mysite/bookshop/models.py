@@ -39,6 +39,8 @@ AGE_CHOICES = [
 PURCHASE_CHOICES = [
     ("pre-order", "Предзаказ"),
     ("purchase", "Покупка"),
+    ("waiting", "Ожидание"),
+    ("rejected", "Отклонена")
 ]
 
 REL_TYPE_CHOICES = [

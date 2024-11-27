@@ -1405,5 +1405,7 @@ class BasketViewSet(viewsets.ModelViewSet):
     #     pass
     #
 
+#
+# class PurchasesViewSet(viewsets.ModelViewSet):
 
-# class Purchases
+    # def purchase(self, request, *args, **kwargs):

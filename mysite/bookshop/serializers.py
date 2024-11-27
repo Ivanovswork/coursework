@@ -1,8 +1,9 @@
 from django.contrib.auth import authenticate
-from rest_framework.serializers import ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField
+from rest_framework.serializers import (ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField,
+                                        ListField)
 from rest_framework.authtoken.models import Token
 from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
-    Comments_Authors, AuthorBook, Relations_books
+    Comments_Authors, AuthorBook, Relations_books, Purchases
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -823,3 +824,29 @@ class DeleteBasketSerializer(ModelSerializer):
         return rel
 
 
+class CreatePurchaseSerializer(ModelSerializer):
+    books = ListField()
+
+    class Meta:
+        model = Purchases
+        fields = ["books"]
+
+    def validate(self, attrs):
+        books = attrs.get("books")
+        if books:
+            for book in books:
+                book = Books.objects.filter(pk=book)
+                if not book.exists():
+                    raise ValidationError()
+                if book.status not in ["coming soon", "released"]:
+                    raise ValidationError()
+        else:
+            raise ValidationError()
+
+    def save(self, user, **kwargs):
+        books = self.validated_data["books"]
+        for book in books:
+            if book not in Relations_books.objects.filter(user=user, type="basket"):
+                raise ValidationError
+
+        # purchase = Purchases.objects.create(user=user, )
