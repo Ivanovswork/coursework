@@ -37,7 +37,6 @@ AGE_CHOICES = [
 ]
 
 PURCHASE_CHOICES = [
-    ("pre-order", "Предзаказ"),
     ("purchase", "Покупка"),
     ("waiting", "Ожидание"),
     ("rejected", "Отклонена")
@@ -295,7 +294,8 @@ class Purchases(models.Model):
         on_delete=models.CASCADE)
     date_time = models.DateTimeField(verbose_name="Время совершения покупки", auto_now=True)
     type = models.CharField(verbose_name="Тип покупки", choices=PURCHASE_CHOICES, blank=False, null=True)
-    books = models.ManyToManyField(Books, verbose_name="Позиции покупки", blank=False)
+    books = models.ManyToManyField(Books, verbose_name="Позиции покупки", blank=False, related_name="purchases")
+    total = models.IntegerField(verbose_name="Полная стоимость", null=True)
 
     class Meta:
         verbose_name = "Покупка"

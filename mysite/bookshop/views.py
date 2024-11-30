@@ -11,9 +11,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 
 from .models import Books, User, ConfirmEmailKey, Groups, Genres, Authors, Companies, Support_Messages, Comments, \
-    Comments_Books, Comments_Authors, Relations_books
+    Comments_Books, Comments_Authors, Relations_books, Purchases
 from .email_class import Email
 from .permissions import IsStaff, IsSuperuser
 from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, UserDeleteStaffStatusSerializer, \
@@ -24,10 +25,12 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
     AuthorComplaintSerializer, BookComplaintSerializer, CommentComplaintSerializer, \
     CommentComplaintPresentationSerializer, UserSerializer, BookSerializer, GetBookSerializer, PatchBookSerializer, \
     AddBookAuthorSerializer, DeleteBookAuthorSerializer, DeleteBookGenreSerializer, AddBookGenreSerializer, \
-    CreateBasketSerializer, BasketPositionSerializer, DeleteBasketSerializer
+    CreateBasketSerializer, BasketPositionSerializer, DeleteBasketSerializer, CreatePurchaseSerializer, \
+    PurchaseSerializer
 
 from .serializers import UserRGSTRSerializer
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
 
 # import threading
 # import datetime
@@ -468,7 +471,7 @@ class AuthorsViewSet(viewsets.ModelViewSet):
 class CompaniesViewSet(viewsets.ModelViewSet):
     queryset = Companies.objects.all()
     permission_classes = [IsAuthenticated, IsSuperuser]
-    
+
     def get_serializer_class(self):
         if self.action == "partial_update":
             return PatchCompanySerializer
@@ -921,7 +924,7 @@ class BookComplaintsViewSet(viewsets.ModelViewSet):
         if request.user.is_superuser:
             try:
                 comment = Comments_Books.objects.select_related("comment").filter(pk=pk,
-                                                                                    comment__type="complaint").first()
+                                                                                  comment__type="complaint").first()
                 # print(comment)
                 if comment:
                     serializer = BooksCommentsSerializer(comment)
@@ -1400,12 +1403,70 @@ class BasketViewSet(viewsets.ModelViewSet):
         serializer = BasketPositionSerializer(serializer.save(user))
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # @action(methods=['patch'], detail=False)
-    # def purchase(self, request, *args, **kwargs):
-    #     pass
-    #
 
-#
-# class PurchasesViewSet(viewsets.ModelViewSet):
+class PurchasesViewSet(viewsets.ModelViewSet):
+    queryset = Purchases.objects.all()
+    permission_classes = [IsAuthenticated]
 
-    # def purchase(self, request, *args, **kwargs):
+    @action(methods=['post'], detail=False)
+    def purchase(self, request, *args, **kwargs):
+        user = request.user
+        serializer = CreatePurchaseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer = PurchaseSerializer(serializer.save(user))
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(methods=['patch'], detail=False)
+    def pay(self, request, *args, **kwargs):
+        user = request.user
+        purchase = Purchases.objects.filter(user=user, type="waiting")
+        if purchase.exists() and len(purchase) == 1:
+            purchase = purchase.first()
+
+            # basket = map(lambda x: x.book, user.relations.all())
+            basket = user.relations.all()
+            for book in purchase.books.all():
+                if book in basket:
+                    relation = Relations_books.objects.filter(user=user, book=book).first()
+                    relation.type = "personal_library"
+                    relation.save()
+                else:
+                    Relations_books.objects.create(user=user, book=book, type="personal_library")
+            purchase.type = "purchase"
+            purchase.save()
+
+        return Response(PurchaseSerializer(purchase).data, status=status.HTTP_202_ACCEPTED)
+
+    @action(methods=['patch'], detail=False)
+    def deviation(self, request, *args, **kwargs):
+        user = request.user
+        purchase = Purchases.objects.filter(user=user, type="waiting").first()
+        purchase.type = "rejected"
+        purchase.save()
+        return Response(PurchaseSerializer(purchase).data, status=status.HTTP_202_ACCEPTED)
+
+    @action(methods=['get'], detail=True)
+    def purchase_by_user(self, request, pk, *args, **kwargs):
+        user = User.objects.filter(pk=pk).first()
+        try:
+            if user.is_superuser:
+                purchase = Purchases.objects.filter(user=user, type="purchase")
+                return Response(PurchaseSerializer(purchase, many=True).data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=True)
+    def count_of_purchase_by_book(self, request, pk, *args, **kwargs):
+        book = Books.objects.filter(pk=pk).first()
+        user = request.user
+        try:
+            if user.is_superuser or user.is_staff and book.company == user.company:
+                count = len(Purchases.objects.prefetch_related('books').values("books").filter(books=book.pk))
+                return Response({"count": f"{count}"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+

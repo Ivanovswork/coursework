@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework.serializers import (ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField,
-                                        ListField)
+                                        ListField,)
 from rest_framework.authtoken.models import Token
 from .models import User, Companies, Groups, Genres, Authors, Support_Messages, Comments, Books, Comments_Books, \
     Comments_Authors, AuthorBook, Relations_books, Purchases
@@ -838,15 +838,48 @@ class CreatePurchaseSerializer(ModelSerializer):
                 book = Books.objects.filter(pk=book)
                 if not book.exists():
                     raise ValidationError()
+                book = book.first()
                 if book.status not in ["coming soon", "released"]:
                     raise ValidationError()
+            print("ok")
+            return attrs
         else:
             raise ValidationError()
 
     def save(self, user, **kwargs):
+        if Purchases.objects.filter(user=user, type="waiting").exists():
+            raise ValidationError({"status": "Already has unpaid purchase"})
         books = self.validated_data["books"]
+        basket = []
         for book in books:
-            if book not in Relations_books.objects.filter(user=user, type="basket"):
-                raise ValidationError
+            book = Books.objects.filter(pk=book).first()
+            print(book)
+            if (book not in map(lambda elem: elem.book, Relations_books.objects.filter(user=user, type="basket"))
+                    or book in
+                    map(lambda elem: elem.book, Relations_books.objects.filter(user=user, type="personal_library"))):
+                print(Relations_books.objects.filter(user=user, type="basket"))
+                raise ValidationError({"status": "Еhe book is not in the basket or has already been purchased"})
+            basket.append(book)
 
-        # purchase = Purchases.objects.create(user=user, )
+        purchase = Purchases.objects.create(user=user, type="waiting")
+
+        total = 0
+        for book in basket:
+            total += book.price
+            purchase.books.add(book)
+        purchase.total = total
+
+        purchase.save()
+        return purchase
+
+
+class PurchaseSerializer(ModelSerializer):
+    books = GetBookSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Purchases
+        fields = ["user", "type", "total", "books"]
+
+
+
+
