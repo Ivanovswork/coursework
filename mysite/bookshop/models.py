@@ -163,6 +163,16 @@ class Books(models.Model):
     genres = models.ManyToManyField(Genres)
     authors = models.ManyToManyField(Authors, through='AuthorBook')
     reason = models.TextField(verbose_name="Причина отказа", blank=True, null=True)
+    rating = models.DecimalField(
+        verbose_name="Оценка",
+        decimal_places=2,
+        max_digits=3, validators=[
+            MinValueValidator(Decimal('1')),
+            MaxValueValidator(Decimal('5'))
+        ],
+        blank=True,
+        null=True
+    )
 
     class Meta:
         verbose_name = "Книга"

@@ -30,27 +30,39 @@ from .serializers import UserChangePasswordSerializer, UserToStaffSerializer, Us
 
 from .serializers import UserRGSTRSerializer
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Sum
+
+import threading
+import datetime
 
 
-# import threading
-# import datetime
-#
-#
-# def my_function():
-#     print(f"Функция выполнена в {datetime.datetime.now()}")
-#     # Запускаем таймер снова
-#     start_timer()
-#
-#
-# def start_timer():
-#     # Устанавливаем интервал в 60 секунд
-#     interval = 60
-#     timer = threading.Timer(interval, my_function)
-#     timer.start()
-#
-#
-# # Запускаем таймер при старте приложения
-# start_timer()
+def rating(book):
+    comments = Comments_Books.objects.select_related("comment").filter(book=book).values("comment__rating")
+    total_rating = comments.aggregate(total=Sum("comment__rating"))
+    if total_rating["total"]:
+        return total_rating["total"]/len(comments)
+    else:
+        return None
+
+
+def my_function():
+    print(f"Функция выполнена в {datetime.datetime.now()}")
+    books = Books.objects.all()
+    for book in books:
+        book.rating = rating(book)
+        book.save()
+    start_timer()
+
+
+def start_timer():
+    # Устанавливаем интервал в 60 секунд
+    interval = 10
+    timer = threading.Timer(interval, my_function)
+    timer.start()
+
+
+# Запускаем таймер при старте приложения
+start_timer()
 
 
 def is_owner(request):
