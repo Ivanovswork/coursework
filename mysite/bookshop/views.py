@@ -1307,20 +1307,6 @@ class BookViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=True)
-    def download_file(self, request, pk=None):
-        file_model = Books.objects.filter(pk=pk).first()
-        print(file_model.pk)
-        if file_model:
-            file_data = file_model.file
-            response = HttpResponse(
-                ast.literal_eval(file_data),
-                content_type="application/pdf")
-            response['Content-Disposition'] = 'attachment; filename="file.pdf"'
-            return response
-        else:
-            return Response('No file found in database')
-
     @action(methods=['patch'], detail=True)
     def add_author(self, request, pk=None):
         user = request.user
@@ -1562,3 +1548,26 @@ class PersonalLibraryViewSet(viewsets.ModelViewSet):
         library = Relations_books.objects.filter(user=user, type="personal_library", is_favorite=True)
         serializer = BasketPositionSerializer(library, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=True)
+    def download_file(self, request, pk=None):
+        user = request.user
+        if not Books.objects.filter(pk=pk).exists():
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            book = Books.objects.filter(pk=pk).first()
+            relation = Relations_books.objects.filter(user=user, book=book, type="personal_library")
+            if relation.exists() or user.is_superuser:
+                file_model = Books.objects.filter(pk=pk).first()
+                print(file_model.pk)
+                if file_model:
+                    file_data = file_model.file
+                    response = HttpResponse(
+                        ast.literal_eval(file_data),
+                        content_type="application/pdf")
+                    response['Content-Disposition'] = 'attachment; filename="file.pdf"'
+                    return response
+                else:
+                    return Response('No file found in database')
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
