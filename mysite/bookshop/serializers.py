@@ -763,7 +763,7 @@ class BasketPositionSerializer(ModelSerializer):
 
     class Meta:
         model = Relations_books
-        fields = ["user", "book", "type"]
+        fields = ["user", "book", "type", "is_favorite"]
 
 
 class CreateBasketSerializer(ModelSerializer):
@@ -817,9 +817,12 @@ class DeleteBasketSerializer(ModelSerializer):
 
     def save(self, user, **kwargs):
         book = Books.objects.filter(pk=self.validated_data["book_id"]).first()
-        if book not in user.relations.all():
-            raise ValidationError()
-        rel = Relations_books.objects.filter(user=user, book=book).delete()
+        try:
+            if book not in user.relations.all():
+                raise ValidationError()
+            rel = Relations_books.objects.filter(user=user, book=book, type="basket").delete()
+        except:
+            raise ValidationError({"status": "Book not in basket"})
 
         return rel
 

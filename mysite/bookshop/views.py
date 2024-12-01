@@ -1403,6 +1403,31 @@ class BasketViewSet(viewsets.ModelViewSet):
         serializer = BasketPositionSerializer(serializer.save(user))
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(methods=['get'], detail=True)
+    def basket_by_user(self, request, pk, *args, **kwargs):
+        user = request.user
+        try:
+            if user.is_superuser:
+                basket = Relations_books.objects.filter(user==User.objects.filter(pk=pk).first(), type="basket")
+                return Response(BasketPositionSerializer(basket, many=True).data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=True)
+    def count_of_basket_position_by_book(self, request, pk, *args, **kwargs):
+        book = Books.objects.filter(pk=pk).first()
+        user = request.user
+        try:
+            if user.is_superuser or user.is_staff and book.company == user.company:
+                count = len(Relations_books.objects.filter(book=book.pk))
+                return Response({"count": f"{count}"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class PurchasesViewSet(viewsets.ModelViewSet):
     queryset = Purchases.objects.all()
@@ -1423,7 +1448,6 @@ class PurchasesViewSet(viewsets.ModelViewSet):
         if purchase.exists() and len(purchase) == 1:
             purchase = purchase.first()
 
-            # basket = map(lambda x: x.book, user.relations.all())
             basket = user.relations.all()
             for book in purchase.books.all():
                 if book in basket:
@@ -1470,3 +1494,71 @@ class PurchasesViewSet(viewsets.ModelViewSet):
         except Exception:
             return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+class PersonalLibraryViewSet(viewsets.ModelViewSet):
+    queryset = Relations_books.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        library = Relations_books.objects.filter(user=user, type="personal_library")
+        serializer = BasketPositionSerializer(library, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=True)
+    def library_by_user(self, request, pk, *args, **kwargs):
+        user = request.user
+        try:
+            if user.is_superuser:
+                print(pk)
+                library = Relations_books.objects.filter(
+                    user=User.objects.filter(pk=pk).first(), type="personal_library")
+                return Response(BasketPositionSerializer(library, many=True).data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception:
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch'], detail=True)
+    def favorite_book(self, request, pk, *args, **kwargs):
+        user = request.user
+        if not Books.objects.filter(pk=pk).exists():
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            book = Books.objects.filter(pk=pk).first()
+            relation = Relations_books.objects.filter(user=user, book=book, type="personal_library")
+            if relation.exists():
+                relation = relation.first()
+                if relation.is_favorite:
+                    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+                relation.is_favorite = True
+                relation.save()
+                return Response(BasketPositionSerializer(relation, many=False).data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch'], detail=True)
+    def unfavorite_book(self, request, pk, *args, **kwargs):
+        user = request.user
+        if not Books.objects.filter(pk=pk).exists():
+            return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            book = Books.objects.filter(pk=pk).first()
+            relation = Relations_books.objects.filter(user=user, book=book, type="personal_library")
+            if relation.exists():
+                relation = relation.first()
+                if not relation.is_favorite:
+                    return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)
+                relation.is_favorite = False
+                relation.save()
+                return Response(BasketPositionSerializer(relation, many=False).data, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": "Bad request"}, status=status.HTTP_400_BAD_REQUEST)\
+
+
+    @action(methods=['get'], detail=False)
+    def favorite_books(self, request, *args, **kwargs):
+        user = request.user
+        library = Relations_books.objects.filter(user=user, type="personal_library", is_favorite=True)
+        serializer = BasketPositionSerializer(library, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
