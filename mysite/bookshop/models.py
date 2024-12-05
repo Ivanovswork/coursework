@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.postgres.search import SearchVectorField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django_rest_passwordreset.tokens import get_token_generator
@@ -85,11 +86,12 @@ class Groups(models.Model):
 
 
 class Authors(models.Model):
-    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True)
+    name = models.CharField(verbose_name="Имя", max_length=60, blank=False, null=True, db_index=True)
     b_day = models.DateField(verbose_name="Дата рождения", blank=False, null=True)
     info = models.TextField(verbose_name="Дополнительная информация", blank=False, null=True)
     status = models.CharField(verbose_name="Статус", choices=AUTHOR_STATUS_CHOICES, blank=False, default="request")
     reason = models.TextField(verbose_name="Причина отказа", blank=True, null=True)
+    search_vector = SearchVectorField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Автор"
@@ -173,6 +175,8 @@ class Books(models.Model):
         blank=True,
         null=True
     )
+
+    search_vector = SearchVectorField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Книга"

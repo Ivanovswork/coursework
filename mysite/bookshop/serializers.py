@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.contrib.postgres.search import SearchVector
 from rest_framework.serializers import (ModelSerializer, CharField, ValidationError, EmailField, IntegerField, JSONField,
                                         ListField,)
 from rest_framework.authtoken.models import Token
@@ -292,6 +293,14 @@ class AuthorSerializer(ModelSerializer):
             raise ValidationError({"status": "Bad request"})
         return attrs
 
+    def save(self, **kwargs):
+        print(self.validated_data)
+        author = Authors.objects.create(**self.validated_data)
+        print(author)
+        author.search_vector = SearchVector("name")
+        author.save()
+        return author
+
 
 class PatchAuthorSerializer(ModelSerializer):
     class Meta:
@@ -303,6 +312,7 @@ class PatchAuthorSerializer(ModelSerializer):
         instance.b_day = validated_data.get('b_day', instance.b_day)
         instance.info = validated_data.get('info', instance.info)
         instance.status = validated_data.get('status', instance.status)
+        instance.search_vector = SearchVector("name")
         instance.save()
         return instance
 
@@ -582,6 +592,7 @@ class BookSerializer(ModelSerializer):
                                             language=self.validated_data["language"],
                                             priority=self.validated_data["priority"],
                                             company=Companies.objects.filter(pk=company_id).first())
+                book.search_vector = SearchVector("name")
             else:
                 raise ValidationError()
         else:
@@ -597,20 +608,26 @@ class BookSerializer(ModelSerializer):
                                         language=self.validated_data["language"],
                                         priority=self.validated_data["priority"],
                                         company=user.company)
+            book.search_vector = SearchVector("name")
         # book.save()
 
         for genre in self.validated_data["genres"]:
             book.genres.add(genre)
         for author in self.validated_data["authors_set"]["authors"]:
-            a_b = AuthorBook.objects.create(book=book, author=Authors.objects.filter(pk=author["id"]).first(),
-                                            priority=author["priority"])
+            a = Authors.objects.filter(pk=author["id"]).first()
+            a_b = AuthorBook.objects.create(book=book, author=a,priority=author["priority"])
+            a.search_vector = SearchVector("name")
+            a.save()
             a_b.save()
         for author in self.validated_data["authors_set"]["new_authors"]:
             priority = author.pop("priority")
 
             serializer = AuthorSerializer(data=author)
             serializer.is_valid(raise_exception=True)
-            a_b = AuthorBook.objects.create(book=book, author=serializer.save(), priority=priority)
+            a = serializer.save()
+            print(a)
+            a.search_vector = SearchVector("name")
+            a_b = AuthorBook.objects.create(book=book, author=a, priority=priority)
             a_b.save()
         book.save()
         return book
@@ -646,6 +663,7 @@ class PatchBookSerializer(ModelSerializer):
         instance.language = validated_data.get('language', instance.language)
         instance.priority = validated_data.get('priority', instance.priority)
         instance.reason = validated_data.get('reason', instance.reason)
+        instance.search_vector = SearchVector("name")
         instance.save()
         return instance
 
